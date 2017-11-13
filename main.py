@@ -16,20 +16,20 @@ num_inputs = 784
 
 # Create model
 def network(in_shape):
-    with tf.name_scope('leon'):
-        dense1 = tf.layers.conv2d(inputs=in_shape, filters=6, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)  #5,5 window, increments window by 1 each dim, 6 target filters
-        flat = tf.layers.flatten(in_shape)
-        # dense1 = tf.layers.dense(inputs=in_shape, units=30, activation=tf.nn.sigmoid)
-        out = tf.layers.dense(inputs=flat, units=num_labels, activation=tf.nn.sigmoid)
-        tf.summary.scalar("out", out)
+        #dense1 = tf.layers.conv2d(inputs=in_shape, filters=6, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)  #5,5 window, increments window by 1 each dim, 6 target filters
+        #flat = tf.layers.flatten(in_shape)
+
+        dense1 = tf.layers.dense(inputs=in_shape, units=30, activation=tf.nn.sigmoid)
+        out = tf.layers.dense(inputs=dense1, units=num_labels, activation=tf.nn.sigmoid)
+
         return out
 
 
 # tf Graph input
-networkInput = tf.placeholder(shape=[100, 28, 28, 1], dtype=tf.float32)
-#networkInput = tf.placeholder(shape=[100, 784], dtype=tf.float32)
+#networkInput = tf.placeholder(shape=[100, 28, 28, 1], dtype=tf.float32)
+networkInput = tf.placeholder(shape=[None, 784], dtype=tf.float32)
 
-networkOutput = tf.placeholder(shape=[100, num_labels], dtype=tf.float32)
+networkOutput = tf.placeholder(shape=[None, num_labels], dtype=tf.float32)
 
 # Construct model
 logits = network(in_shape=networkInput)
@@ -55,8 +55,8 @@ with tf.Session() as sess:
             j += 1
             images, answers = mnist.train.next_batch(batch_size)  #get next set of images and answers
 
-            reshape = np.reshape(images, [100, 28, 28, 1])
-            #reshape = np.reshape(images, [100, 784])
+            #reshape = np.reshape(images, [100, 28, 28, 1])
+            reshape = images#np.reshape(images, [None, 784])
             summary, c = sess.run(fetches=[trainer, cost], feed_dict={networkInput: reshape, networkOutput: answers})
 
             avg_cost += c / total_batch
@@ -70,10 +70,9 @@ with tf.Session() as sess:
 
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 
-    first = mnist.test.images[:100]
-    reshape = np.reshape(first, [100, 28, 28, 1])
-    print("Accuracy:", accuracy.eval({networkInput: reshape, networkOutput: mnist.test.labels[:100]}))
-
+    #first = mnist.test.images[:100]
+    #reshape = np.reshape(first, [100, 28, 28, 1])
+    print("Accuracy:", accuracy.eval({networkInput: mnist.test.images, networkOutput: mnist.test.labels}))
 
     writer.close()
 
