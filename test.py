@@ -8,6 +8,7 @@ outputType = tf.placeholder(shape=[None, num_labels], dtype=tf.float32)
 
 def buildNetwork(ins):
     network = tf.layers.dense(inputs=ins, units=num_labels, activation=tf.nn.sigmoid)
+    network = tf.layers.dense(inputs=network, units=num_labels, activation=tf.nn.sigmoid)
     return network
 
 
