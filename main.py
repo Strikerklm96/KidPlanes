@@ -6,7 +6,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
 # Parameters
-learning_rate = 0.001
+learning_rate = 0.04
 training_epochs = 15
 batch_size = 100
 
@@ -15,34 +15,37 @@ num_inputs = 784
 
 
 # Create model
-def inputNetwork(in_shape):
-        #in_shape = tf.reshape(in_shape, shape=[-1, 28, 28, 1])
-        #dense1 = tf.layers.conv2d(inputs=in_shape, filters=1, kernel_size=(2, 2), strides=(1, 1), activation=tf.nn.sigmoid)  #5,5 window, increments window by 1 each dim, 6 target filters
-        #flat = tf.layers.flatten(dense1)
+def inputNetwork(input):
+    #in_shape = tf.reshape(in_shape, shape=[-1, 28, 28, 1])
+    #dense1 = tf.layers.conv2d(inputs=in_shape, filters=1, kernel_size=(2, 2), strides=(1, 1), activation=tf.nn.sigmoid)  #5,5 window, increments window by 1 each dim, 6 target filters
+    #flat = tf.layers.flatten(dense1)
 
-        flat = tf.layers.dense(inputs=in_shape, units=30, activation=tf.nn.sigmoid)
-        out = tf.layers.dense(inputs=flat, units=num_labels, activation=tf.nn.sigmoid)
-        return out
+    out = tf.layers.dense(inputs=input, units=30, activation=tf.nn.sigmoid)
+    return out
 
+def output(input):
+    out = tf.layers.dense(inputs=input, units=num_labels, activation=tf.nn.sigmoid)
+    return out
 
 # tf Graph input
 networkInput = tf.placeholder(shape=[None, 784], dtype=tf.float32)
 networkOutput = tf.placeholder(shape=[None, num_labels], dtype=tf.float32)
 
 # Construct model
-preNetwork = inputNetwork(in_shape=networkInput)
-fullNetwork = preNetwork
+preNetwork = inputNetwork(networkInput)
+fullNetwork = output(preNetwork)
+
 # Define loss and optimizer
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=fullNetwork, labels=networkOutput))
-optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-trainer = optimizer.minimize(cost)
+trainer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+
 
 saver = tf.train.Saver()
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("output", sess.graph)
 
-    if(True):
+    if(False):
         saver.restore(sess,"brains/")
     else:
         for epoch in range(training_epochs):
