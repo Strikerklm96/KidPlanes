@@ -42,8 +42,8 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
         x = tf.reshape(x, shape=[-1, 28, 28, 1])
 
         # Convolution Layer with 32 filters and a kernel size of 5
-        conv1 = tf.layers.conv2d(inputs=x, filters=6, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)
-        conv1 = tf.layers.conv2d(inputs=conv1, filters=6, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)
+        conv1 = tf.layers.conv2d(inputs=x, filters=1, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)
+       # conv1 = tf.layers.conv2d(inputs=conv1, filters=6, kernel_size=(5, 5), strides=(1, 1), activation=tf.nn.sigmoid)
 
         # Flatten the data to a 1-D vector for the fully connected layer
         fc1 = tf.contrib.layers.flatten(conv1)
@@ -54,19 +54,28 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
     return out
 
 
+def addl(logits):
+    out = tf.layers.dense(logits, num_classes)
+    return out
+
+
 # Define the model function (following TF Estimator Template)
 def model_fn(features, labels, mode):
     # Build the neural network
     # Because Dropout have different behavior at training and prediction time, we
     # need to create 2 distinct computation graphs that still share the same weights.
-    logits_train = conv_net(features, num_classes, dropout, reuse=False,
+    logits_train1 = conv_net(features, num_classes, dropout, reuse=False,
                             is_training=True)
-    logits_test = conv_net(features, num_classes, dropout, reuse=True,
+    logits_addl = addl(logits_train1)
+
+
+    logits_test1 = conv_net(features, num_classes, dropout, reuse=True,
                            is_training=False)
+    logits_addl3 = addl(logits_test1)
 
     # Predictions
-    pred_classes = tf.argmax(logits_test, axis=1)
-    pred_probas = tf.nn.softmax(logits_test)
+    pred_classes = tf.argmax(logits_addl3, axis=1)
+    pred_probas = tf.nn.softmax(logits_addl3)
 
     # If prediction mode, early return
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -74,7 +83,7 @@ def model_fn(features, labels, mode):
 
         # Define loss and optimizer
     loss_op = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-        logits=logits_train, labels=tf.cast(labels, dtype=tf.int32)))
+        logits=logits_addl, labels=tf.cast(labels, dtype=tf.int32)))
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     train_op = optimizer.minimize(loss_op,
                                   global_step=tf.train.get_global_step())
@@ -93,11 +102,13 @@ def model_fn(features, labels, mode):
 
     return estim_specs
 
-
 # Build the Estimator
-estimatorModel = tf.estimator.Estimator(model_fn)
+run_config = tf.contrib.learn.RunConfig()
+# run_config = run_config.replace(model_dir="brains")
+estimatorModel = tf.estimator.Estimator(model_fn=model_fn, config=run_config)
 
-
+# s = estimatorModel.get_variable_names()
+# estimatorModel.get_variable_value()
 # Define the input function for training
 input_fn = tf.estimator.inputs.numpy_input_fn(
     x={'images': mnist.train.images}, y=mnist.train.labels,
