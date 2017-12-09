@@ -7,13 +7,14 @@ inputType = tf.placeholder(shape=[None, num_inputs], dtype=tf.float32)
 outputType = tf.placeholder(shape=[None, num_labels], dtype=tf.float32)
 
 def buildNetwork(ins):
-    network = tf.layers.dense(inputs=ins, units=num_labels, activation=tf.nn.sigmoid)
+    network = tf.layers.dense(name="leon", inputs=ins, units=num_labels, activation=tf.nn.sigmoid)
     return network
 
 
 network = buildNetwork(inputType)
 loss = tf.square(network - outputType)
-train_op = tf.train.GradientDescentOptimizer(0.1).minimize(loss)
+vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "leon/kernel:0")
+train_op = tf.train.GradientDescentOptimizer(0.1).minimize(loss=loss, var_list=vars)
 
 init_op = tf.global_variables_initializer()
 sess = tf.Session()
