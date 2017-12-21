@@ -34,8 +34,8 @@ train_vars2 = tf.get_collection(key=tf.GraphKeys.TRAINABLE_VARIABLES, scope=lear
 
 
 #train_op0 = tf.train.AdamOptimizer(0.0).minimize(loss=loss, var_list=[train_vars0])
-train_op1 = tf.train.AdamOptimizer(0.1).minimize(loss=loss, var_list=[train_vars1])
-train_op2 = tf.train.AdamOptimizer(0.1).minimize(loss=loss, var_list=[train_vars2])
+train_op1 = tf.train.AdamOptimizer(0.05).minimize(loss=loss, var_list=[train_vars1])
+train_op2 = tf.train.AdamOptimizer(0.05).minimize(loss=loss, var_list=[train_vars2])
 train_op = tf.group(train_op1, train_op2)#, train_op0)
 
 init_op = tf.global_variables_initializer()
