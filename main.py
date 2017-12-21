@@ -14,6 +14,7 @@ num_labels = 10
 num_inputs = 784
 
 
+
 # Create model
 def inputNetwork(input):
     #in_shape = tf.reshape(in_shape, shape=[-1, 28, 28, 1])
