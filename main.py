@@ -6,7 +6,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
 # Parameters
-learning_rate = 0.04
+learning_rate = 0.2
 training_epochs = 15
 batch_size = 100
 
@@ -38,7 +38,7 @@ fullNetwork = output(preNetwork)
 
 # Define loss and optimizer
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=fullNetwork, labels=networkOutput))
-trainer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+trainer = tf.train.AdadeltaOptimizer(learning_rate).minimize(cost)
 
 
 saver = tf.train.Saver()
