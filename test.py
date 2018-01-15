@@ -36,7 +36,7 @@ outputs = [[0], [1], [2]] #expected y values
 brainSaver = tf.train.Saver(var_list={"vars1": vars1[0]})
 graphWriter = tf.summary.FileWriter("output/", sess.graph)
 
-brainSaver.restore(sess, "brains/test.txt")
+#brainSaver.restore(sess, "brains/test.txt")
 
 # Print the initial values of the network.
 print("\n Initial Network [weight, bias]:")
