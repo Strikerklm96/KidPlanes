@@ -1,9 +1,17 @@
-#  copy pasted from https://gist.github.com/siemanko/b18ce332bde37e156034e5d3f60f8a23
+"""
+    The problem we are trying to solve is adding two binary numbers. The
+    numbers are reversed, so that the state of RNN can add the numbers
+    perfectly provided it can learn to store carry in the state. Timestep t
+    corresponds to bit len(number) - t.
+
+    copy pasted from https://gist.github.com/siemanko/b18ce332bde37e156034e5d3f60f8a23
+"""
 
 import numpy as np
 import random
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
+
 
 # these are just for easy building of test data
 def as_bytes(num, final_size):
@@ -23,16 +31,17 @@ def generate_example(num_bits):
             as_bytes(res, num_bits))
 
 
-def generate_batch(num_bits, batch_size):
-    x = np.empty((num_bits, batch_size, 2))
-    y = np.empty((num_bits, batch_size, 1))
+def generate_batch(num_bits, batch_num):
+    ins = np.empty((num_bits, batch_num, 2))
+    outs = np.empty((num_bits, batch_num, 1))
 
-    for i in range(batch_size):
+    for i in range(batch_num):
         a, b, r = generate_example(num_bits)
-        x[:, i, 0] = a
-        x[:, i, 1] = b
-        y[:, i, 0] = r
-    return x, y
+        ins[:, i, 0] = a
+        ins[:, i, 1] = b
+        outs[:, i, 0] = r
+    return ins, outs
+
 
 # real program begins
 INPUT_SIZE = 2  # 2 bits per timestep
@@ -58,9 +67,10 @@ def build_network():
 
 cell = build_network()
 batch_size = tf.shape(inputType)[1]
-rnn_outputs, rnn_states = tf.nn.dynamic_rnn(cell, inputType, initial_state=cell.zero_state(batch_size, tf.float32), time_major=True)
-
-
+rnn_outputs, rnn_states = tf.nn.dynamic_rnn(cell,
+                                            inputType,
+                                            initial_state=cell.zero_state(batch_size, tf.float32),
+                                            time_major=True)
 
 
 predicted_outputs = tf.map_fn(final_projection, rnn_outputs)
@@ -70,31 +80,31 @@ train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(error)
 accuracy = tf.reduce_mean(tf.cast(tf.abs(outputType - predicted_outputs) < 0.5, tf.float32))
 
 
-
-
-
-
-
 init_op = tf.global_variables_initializer()
 session = tf.Session()
 session.run(init_op)
 
-NUM_BITS = 10
-ITERATIONS_PER_EPOCH = 100
-BATCH_SIZE = 16
-test_x, test_y = generate_batch(num_bits=NUM_BITS, batch_size=100)
+bits = 10
+iter_per_epoch = 100
+test_x, test_y = generate_batch(num_bits=bits, batch_num=100)
+
+example_x, example_y = generate_batch(num_bits=2, batch_num=1)
+
+print("\nInput:  ", example_x)
+print("\nOutput: ", example_y)
+print(session.run(fetches=[error, train_op], feed_dict={inputType: example_x, outputType: example_y}))
 
 for epoch in range(8):
     epoch_error = 0
-    for _ in range(ITERATIONS_PER_EPOCH):
-        x, y = generate_batch(num_bits=NUM_BITS, batch_size=BATCH_SIZE)
-        result = session.run([error, train_op], {inputType: x, outputType: y})
+    for _ in range(iter_per_epoch):
+        x, y = generate_batch(num_bits=bits, batch_num=16)
+        result = session.run(fetches=[error, train_op], feed_dict={inputType: x, outputType: y})
         epoch_error += result[0]
 
-    epoch_error /= ITERATIONS_PER_EPOCH
-    valid_accuracy = session.run(accuracy, {inputType: test_x, outputType: test_y})
+    epoch_error /= iter_per_epoch
+    valid_accuracy = session.run(fetches=accuracy, feed_dict={inputType: test_x, outputType: test_y})
 
-    print("Epoch %d, train error: %.2f, valid accuracy: %.1f %%" % (epoch, epoch_error, valid_accuracy * 100.0))
+    print("Epoch %d, error: %.2f, accuracy: %.f%%" % (epoch, epoch_error, valid_accuracy * 100.0))
 
 
 # print(session.run(fetches=))
