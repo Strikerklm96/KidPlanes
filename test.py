@@ -4,6 +4,7 @@ import tensorflow as tf
 num_inputs = 1
 num_labels = 1
 
+# None says you can feed any number of inputs, every value after declares the shape of those inputs
 inputType = tf.placeholder(shape=[None, num_inputs], dtype=tf.float32)
 outputType = tf.placeholder(shape=[None, num_labels], dtype=tf.float32)
 
@@ -15,7 +16,8 @@ def build_network(ins):
 
 network = build_network(inputType)
 loss = tf.square(outputType - network)
-vars1 = tf.get_collection(key=tf.GraphKeys.TRAINABLE_VARIABLES, scope="vars1/bias")  # "leon/kernel:0"
+# "vars1/kernel" for weights, "vars1/bias" for biases, and "vars1/kernel:0" for the first weight, etc.
+vars1 = tf.get_collection(key=tf.GraphKeys.TRAINABLE_VARIABLES, scope="vars1")
 train_op = tf.train.AdamOptimizer(0.1).minimize(loss=loss)  # var_list=[vars1, vars2])
 
 init_op = tf.global_variables_initializer()
@@ -44,7 +46,7 @@ for i in range(100):
 # Print a single sample output.
 print("\n Final Outputs:")
 print(sess.run(network, feed_dict={inputType: inputs}))
-print(sess.run(network, feed_dict={inputType: [[5], [10]]}))
+print(sess.run(network, feed_dict={inputType: [[5]]}))
 
 # Print results of network.
 print("\n Final Network [weight, bias]:")
