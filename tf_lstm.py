@@ -173,3 +173,7 @@ for epoch in range(8):
         outputs: valid_y,
     })
     print("Epoch %d, train error: %.2f, valid accuracy: %.1f %%" % (epoch, epoch_error, valid_accuracy * 100.0))
+
+
+print(session.run())
+session
