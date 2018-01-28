@@ -1,19 +1,15 @@
-
-#Source code with the blog post at http://monik.in/a-noobs-guide-to-implementing-rnn-lstm-using-tensorflow/
+# Source code with the blog post at http://monik.in/a-noobs-guide-to-implementing-rnn-lstm-using-tensorflow/
 import numpy as np
 # import random
 from random import shuffle
 import tensorflow as tf
-
-# from tensorflow.models.rnn import rnn_cell
-# from tensorflow.models.rnn import rnn
 
 NUM_EXAMPLES = 10000
 
 train_input = ['{0:020b}'.format(i) for i in range(2**20)]
 shuffle(train_input)
 train_input = [map(int, i) for i in train_input]
-ti  = []
+ti = []
 for i in train_input:
     temp_list = []
     for j in i:
@@ -33,6 +29,7 @@ for i in train_input:
 
 test_input = train_input[NUM_EXAMPLES:]
 test_output = train_output[NUM_EXAMPLES:]
+
 train_input = train_input[:NUM_EXAMPLES]
 train_output = train_output[:NUM_EXAMPLES]
 
