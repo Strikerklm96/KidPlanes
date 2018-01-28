@@ -40,13 +40,17 @@ print(sess.run(vars1))
 
 # Train the network for N training events.
 for i in range(100):
-    print(sess.run(network, feed_dict={inputType: inputs}))  # print the results of output run.
+    print(sess.run(network, feed_dict={inputType: inputs}))  # print the results of each output run.
     sess.run(fetches=[train_op], feed_dict={inputType: inputs, outputType: outputs})  # feed fetches to make it train.
 
 # Print a single sample output.
-print("\n Final Outputs:")
+print("\n Final Outputs For:", inputs)
 print(sess.run(network, feed_dict={inputType: inputs}))  # we don't feed fetches, so it jus runs the network.
-print(sess.run(network, feed_dict={inputType: [[5]]}))
+
+# see how the network generalizes to new values it hasn't seen before
+test_cases = [[5], [75], [2500]]
+print("\n Outputs For Test Cases:", test_cases, "(the network has never seen these values before)")
+print(sess.run(network, feed_dict={inputType: test_cases}))
 
 # Print values of vars1.
 print("\n Final Network [weight, bias]:")
