@@ -34,21 +34,21 @@ graphWriter = tf.summary.FileWriter("output/", sess.graph)
 
 # brainSaver.restore(sess, "brains/test.txt")
 
-# Print the initial values of the network.
+# Print initial values of vars1.
 print("\n Initial Network [weight, bias]:")
 print(sess.run(vars1))
 
 # Train the network for N training events.
 for i in range(100):
     print(sess.run(network, feed_dict={inputType: inputs}))  # print the results of output run.
-    sess.run(fetches=[train_op], feed_dict={inputType: inputs, outputType: outputs})
+    sess.run(fetches=[train_op], feed_dict={inputType: inputs, outputType: outputs})  # feed fetches to make it train.
 
 # Print a single sample output.
 print("\n Final Outputs:")
-print(sess.run(network, feed_dict={inputType: inputs}))
+print(sess.run(network, feed_dict={inputType: inputs}))  # we don't feed fetches, so it jus runs the network.
 print(sess.run(network, feed_dict={inputType: [[5]]}))
 
-# Print results of network.
+# Print values of vars1.
 print("\n Final Network [weight, bias]:")
 print(sess.run(vars1))
 
