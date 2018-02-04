@@ -27,6 +27,9 @@ train_op = tf.train.AdamOptimizer().minimize(cross_entropy)
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
+val = sess.run(prediction, {inputType: [[[0]]]})
+print(val)
+
 epochs = 100
 for i in range(epochs):
     sess.run(fetches=train_op, feed_dict={inputType: train_input, outputType: train_output})
