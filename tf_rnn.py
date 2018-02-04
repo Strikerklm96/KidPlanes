@@ -36,16 +36,16 @@ def generate_batch(num_bits, batch_num):
     outs = np.empty((num_bits, batch_num, 1))
 
     for i in range(batch_num):
-        a, b, r = generate_example(num_bits)
+        a, b, c = generate_example(num_bits)
         ins[:, i, 0] = a
         ins[:, i, 1] = b
-        outs[:, i, 0] = r
+        outs[:, i, 0] = c
     return ins, outs
 
 
 # real program begins
 INPUT_SIZE = 2  # 2 bits per timestep
-RNN_HIDDEN_SIZE = 20
+RNN_HIDDEN_SIZE = 3
 OUTPUT_SIZE = 1  # 1 bit per timestep
 TINY = 1e-6  # to avoid NaNs in logs
 LEARNING_RATE = 0.01
