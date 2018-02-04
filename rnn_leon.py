@@ -1,47 +1,60 @@
 import tensorflow as tf
-train_input = [[[0], [1]], [[0], [1]]]
-train_output = [[1,0], [1,0]]
+
+train_input = [[[0], [0], [0]], [[1], [1], [1]]]
+train_output = [[0], [1]]
 test_input = train_input
 test_output = train_output
 
 batch_size = 2
 
-inputType = tf.placeholder(tf.float32, [batch_size, 4, 1])  # batch_size, max_time, num_features
-outputType = tf.placeholder(tf.float32, [None, 2])
+n_input = 3
+num_hidden = 5
+n_output = 1
+
+weights = {
+    'out': tf.Variable(tf.random_normal([num_hidden, n_output]))
+}
+biases = {
+    'out': tf.Variable(tf.random_normal([n_output]))
+}
+
+inputType = tf.placeholder(tf.float32, [batch_size, n_input, n_output])  # batch_size, max_time, num_features
+outputType = tf.placeholder(tf.float32, [None, 1])
 
 
-num_hidden = 2
-cell = tf.nn.rnn_cell.LSTMCell(num_units=num_hidden, state_is_tuple=True)
+def RNN(ins, weights, biases):
+    # reshape to [1, n_input]
+    ins = tf.reshape(ins, [-1, n_input])
+
+    # Generate a n_input-element sequence of inputs
+    # (eg. [had] [a] [general] -> [20] [6] [33])
+    ins = tf.split(ins, n_input, 1)
+
+    # 1-layer LSTM with n_hidden units.
+    rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(num_hidden)
+
+    # generate prediction
+    outputs, states = tf.nn.static_rnn(rnn_cell, ins, dtype=tf.float32)
+
+    # there are n_input outputs but
+    # we only want the last output
+    return tf.matmul(outputs[-1], weights['out']) + biases['out']
+
 
 # outputs:[batchSize, num chained cells, outputSize]
 # state:[batchSize, cell.state_size]
-init_state = cell.zero_state(batch_size=batch_size, dtype=tf.float32)
-outputs, state = tf.nn.dynamic_rnn(cell=cell, inputs=inputType, initial_state=init_state, dtype=tf.float32)
-outputs = tf.transpose(outputs, [1, 0, 2])  # switches the dimensionality of it
 
-# so how do we know how to compute the loss?:
-last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
-weight = tf.Variable(tf.truncated_normal([num_hidden, int(outputType.get_shape()[1])]))
-bias = tf.Variable(tf.constant(0.1, shape=[outputType.get_shape()[1]]))
-
-prediction = tf.nn.softmax(tf.matmul(last, weight) + bias)
-cross_entropy = -tf.reduce_sum(outputType * tf.log(tf.clip_by_value(prediction, 1e-10, 1.0)))
-train_op = tf.train.AdamOptimizer().minimize(cross_entropy)
-
+network = RNN(inputType, weights, biases)
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=network, labels=outputType))
+train_op = tf.train.RMSPropOptimizer(learning_rate=0.02).minimize(cost)
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
-#val = sess.run(prediction, {inputType: [[[0]],[[1]]]})
-#print(val)
-
-epochs = 100
-for i in range(epochs):
+for i in range(100):
     sess.run(fetches=train_op, feed_dict={inputType: train_input, outputType: train_output})
-
-#val = sess.run(prediction, {inputType: [[[0]]]})
-#print(val)
+    val,other = sess.run(network, {inputType: train_input})
+    print(val)
+    print(other)
 
 sess.close()
-
-
