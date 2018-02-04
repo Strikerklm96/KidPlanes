@@ -8,7 +8,7 @@ inputType = tf.placeholder(tf.float32, [None, 1, 1])  # time_steps, batch_size, 
 outputType = tf.placeholder(tf.float32, [None, 1])
 
 
-num_hidden=2
+num_hidden = 2
 cell = tf.nn.rnn_cell.LSTMCell(num_units=num_hidden, state_is_tuple=True)
 
 # 'outputs' is a tensor of shape [batch_size, max_time, cell_state_size]
