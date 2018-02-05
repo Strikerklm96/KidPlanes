@@ -17,7 +17,7 @@ num_batches = total_series_length // batch_size // truncated_backprop_length
 
 def generateData():
     cause1 = [0, 0]
-    result1 = [0, 1]
+    result1 = [1, 0]
     cause2 = [1, 1]
     result2 = [0, 1]
 
@@ -37,6 +37,10 @@ def generateData():
 
     x = []
     y = []
+
+    batchYy = np.delete(batchYy, [1], axis=0)
+    batchYy = np.delete(batchYy, [1], axis=0)
+
     for i in range(batch_size):
         x.append(batchXx)
         y.append(batchYy)
@@ -44,6 +48,7 @@ def generateData():
 
     x = np.asarray(x)
     y = np.asarray(y)
+
 
     return x, y
 
@@ -132,13 +137,26 @@ with tf.Session() as sess:
                     batchY_placeholder: batchY,
                     init_state: _current_state
                 })
+
+            one_hot_output_series = []
+            single_output_series = []
+            for batch_series_idx in range(5):
+                one_hot_output_series = np.array(_predictions_series)[:, batch_series_idx, :]
+                single_output_series = np.array([(1 if out[0] < 0.5 else 0) for out in one_hot_output_series])
+
             print("Answer:")
             print(batchY[0])
             print("Prediction:")
-            print(_predictions_series[0])
+            print(single_output_series)
             print("State:")
             print(_current_state)
 
+            _current_state, _predictions_series = sess.run(
+                [current_state, predictions_series],
+                feed_dict={
+                    batchX_placeholder: batchX,
+                    init_state: _current_state
+                })
 
             loss_list.append(_total_loss)
 
@@ -148,3 +166,6 @@ with tf.Session() as sess:
 
 plt.ioff()
 plt.show()
+
+
+

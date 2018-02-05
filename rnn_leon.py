@@ -48,8 +48,9 @@ network = RNN(inputType, weights, biases)
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=network, labels=outputType))
 train_op = tf.train.RMSPropOptimizer(learning_rate=0.02).minimize(cost)
 
+init_op = tf.global_variables_initializer()
 sess = tf.Session()
-sess.run(tf.global_variables_initializer())
+sess.run(init_op)
 
 for i in range(100):
     sess.run(fetches=train_op, feed_dict={inputType: train_input, outputType: train_output})
