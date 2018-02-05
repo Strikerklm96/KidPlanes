@@ -22,7 +22,7 @@ def generateData():
 
     return (x, y)
 
-batchX_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length])
+batchX_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length, 1])
 batchY_placeholder = tf.placeholder(tf.int32, [batch_size, truncated_backprop_length])
 
 init_state = tf.placeholder(tf.float32, [batch_size, state_size])
@@ -31,17 +31,17 @@ W2 = tf.Variable(np.random.rand(state_size, num_classes),dtype=tf.float32)
 b2 = tf.Variable(np.zeros((1,num_classes)), dtype=tf.float32)
 
 # Unpack columns
-inputs_series = tf.split(batchX_placeholder, truncated_backprop_length, 1)
+inputs_series = tf.split(batchX_placeholder, truncated_backprop_length, axis=1)
 labels_series = tf.unstack(batchY_placeholder, axis=1)
 
 # Forward passes
 cell = tf.nn.rnn_cell.BasicRNNCell(state_size)
-states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=inputs_series, initial_state=init_state)
+states_series, current_state = tf.nn.dynamic_rnn(cell, inputs_series, initial_state=init_state)
 
 logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
 
-losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels) for logits, labels in zip(logits_series, labels_series)]
+losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels) for logits, labels in zip(logits_series,labels_series)]
 total_loss = tf.reduce_mean(losses)
 
 train_step = tf.train.AdagradOptimizer(0.3).minimize(total_loss)

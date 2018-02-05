@@ -51,7 +51,6 @@ TINY = 1e-6  # to avoid NaNs in logs
 LEARNING_RATE = 0.01
 USE_LSTM = True
 
-
 inputType = tf.placeholder(tf.float32, (None, None, INPUT_SIZE))  # (time, batch, in)
 outputType = tf.placeholder(tf.float32, (None, None, OUTPUT_SIZE))  # (time, batch, out)
 
@@ -72,13 +71,11 @@ rnn_outputs, rnn_states = tf.nn.dynamic_rnn(cell,
                                             initial_state=cell.zero_state(batch_size, tf.float32),
                                             time_major=True)
 
-
 predicted_outputs = tf.map_fn(final_projection, rnn_outputs)
 error = -(outputType * tf.log(predicted_outputs + TINY) + (1.0 - outputType) * tf.log(1.0 - predicted_outputs + TINY))
 error = tf.reduce_mean(error)
 train_op = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(error)
 accuracy = tf.reduce_mean(tf.cast(tf.abs(outputType - predicted_outputs) < 0.5, tf.float32))
-
 
 init_op = tf.global_variables_initializer()
 session = tf.Session()
@@ -98,8 +95,17 @@ for epoch in range(8):
     epoch_error = 0
     for _ in range(iter_per_epoch):
         x, y = generate_batch(num_bits=bits, batch_num=16)
-        result = session.run(fetches=[error, train_op], feed_dict={inputType: x, outputType: y})
-        epoch_error += result[0]
+        result, _train_step, _current_state, _predictions_series = session.run(
+            fetches=[error, train_op, rnn_states, predicted_outputs], feed_dict={inputType: x, outputType: y})
+        epoch_error += result
+
+        print("Answer:")
+        print(y[0])
+        print("Prediction:")
+        print(_predictions_series[0])
+        print("State:")
+        print(_current_state)
+
 
     epoch_error /= iter_per_epoch
     valid_accuracy = session.run(fetches=accuracy, feed_dict={inputType: test_x, outputType: test_y})
