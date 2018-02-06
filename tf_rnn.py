@@ -12,6 +12,14 @@ import random
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 
+def charToClass(char):
+    classification = np.zeros(26)
+    index = ord(char) - ord('a')
+    classification[index] = 1
+    return classification
+
+def classToChar(arry):
+    return chr(np.argmax(arry) + ord('a'))
 
 # these are just for easy building of test data
 def as_bytes(num, final_size):
