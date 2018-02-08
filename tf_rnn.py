@@ -31,28 +31,24 @@ def as_bytes(num, final_size):
 
 
 def generate_example(num_bits):
-    a = random.randint(0, 2 ** (num_bits - 1) - 1)
-    b = random.randint(0, 2 ** (num_bits - 1) - 1)
-    res = a + b
-    return (as_bytes(a, num_bits),
-            as_bytes(b, num_bits),
-            as_bytes(res, num_bits))
+    return random.getrandbits(num_bits)
 
 
 def generate_batch(num_bits, batch_num):
-    ins = np.empty((num_bits, batch_num, 2))
+    ins = np.empty((num_bits, batch_num, 1))
     outs = np.empty((num_bits, batch_num, 1))
 
+    outs[0]
     for i in range(batch_num):
-        a, b, c = generate_example(num_bits)
+        a = generate_example(num_bits)
         ins[:, i, 0] = a
-        ins[:, i, 1] = b
-        outs[:, i, 0] = c
+        if i+1 < batch_num:
+            outs[:, i+1, 0] = a
     return ins, outs
 
 
 # real program begins
-INPUT_SIZE = 2  # 2 bits per timestep
+INPUT_SIZE = 1  # 2 bits per timestep
 RNN_HIDDEN_SIZE = 3
 OUTPUT_SIZE = 1  # 1 bit per timestep
 TINY = 1e-6  # to avoid NaNs in logs
@@ -89,17 +85,17 @@ init_op = tf.global_variables_initializer()
 session = tf.Session()
 session.run(init_op)
 
-bits = 10
+bits = 1
 iter_per_epoch = 100
 test_x, test_y = generate_batch(num_bits=bits, batch_num=100)
 
-example_x, example_y = generate_batch(num_bits=2, batch_num=1)
+example_x, example_y = generate_batch(num_bits=1, batch_num=1)
 
 print("\nInput:  ", example_x)
 print("\nOutput: ", example_y)
 print(session.run(fetches=[error, train_op], feed_dict={inputType: example_x, outputType: example_y}))
 
-for epoch in range(8):
+for epoch in range(1000):
     epoch_error = 0
     for _ in range(iter_per_epoch):
         x, y = generate_batch(num_bits=bits, batch_num=16)
@@ -107,12 +103,15 @@ for epoch in range(8):
             fetches=[error, train_op, rnn_states, predicted_outputs], feed_dict={inputType: x, outputType: y})
         epoch_error += result
 
-        print("Answer:")
-        print(y[0])
-        print("Prediction:")
-        print(_predictions_series[0])
-        print("State:")
-        print(_current_state)
+        if(epoch%100 == 0):
+            print("Input")
+            print(x[0])
+            print("Answer:")
+            print(y[0])
+            print("Prediction:")
+            print(_predictions_series[0])
+            print("State:")
+            print(_current_state)
 
 
     epoch_error /= iter_per_epoch

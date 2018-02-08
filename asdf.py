@@ -5,52 +5,84 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-num_epochs = 100
-total_series_length = 50000
-truncated_backprop_length = 15
-state_size = 6
-num_classes = 2
-echo_step = 3
-batch_size = 5
-num_batches = total_series_length // batch_size // truncated_backprop_length
+num_classes = 26
 
+def charToClass(char):
+    classification = np.zeros(26)
+    index = ord(char) - ord('a')
+    classification[index] = 1
+    return classification
+
+def classToChar(arry):
+    return chr(np.argmax(arry) + ord('a'))
+
+def stringToBits(str, requestedChars):
+    bits = []
+    numChars = len(str)
+    if(numChars >= requestedChars):
+        for i in range(requestedChars):
+            bits.extend(charToClass(str[i]))
+        return bits
+    else:
+        return -1
+
+def bitsToString(bits, maxChars):
+    chars = ""
+    numBits = len(bits)
+    numChars = int(numBits/num_classes)
+    if numChars > maxChars:
+        numChars = maxChars
+
+    for i in range(numChars):
+        start = i*num_classes
+        end = (i+1)*num_classes
+        if end <= numBits:
+            chars += classToChar(bits[start:end])
+    return chars
+
+bitArray = stringToBits("hiasdf", 2)
+print(bitArray)
+str = bitsToString(bitArray, 2)
+print (str)
+
+batch_size = 5
 
 def generateData():
-    cause1 = [0, 0]
-    result1 = [1, 0]
-    cause2 = [1, 1]
-    result2 = [0, 1]
+    text = "hi"
+    end = "hi"
+    num_chars = len(text)
+    cause1 = stringToBits("hi", 2)#text, num_chars)
+    result1 = stringToBits("hi", 2)#text[1:] + end, num_chars)
+   # cause2 = [1, 1, 1]
+    #result2 = [1, 1, 1]
 
     batchXx = []
-    batchYy = result1
+    batchYy = []
     for i in range(1000):
         batchXx = np.append(batchXx, cause1)
         batchYy = np.append(batchYy, result1)
-        batchXx = np.append(batchXx, cause2)
-        batchYy = np.append(batchYy, result2)
-        batchXx = np.append(batchXx, cause2)
-        batchYy = np.append(batchYy, result2)
-        batchXx = np.append(batchXx, cause1)
-        batchYy = np.append(batchYy, result1)
-        batchXx = np.append(batchXx, cause1)
-        batchYy = np.append(batchYy, result1)
+      #  batchXx = np.append(batchXx, cause2)
+     #   batchYy = np.append(batchYy, result2)
 
     x = []
     y = []
-
-    batchYy = np.delete(batchYy, [1], axis=0)
-    batchYy = np.delete(batchYy, [1], axis=0)
 
     for i in range(batch_size):
         x.append(batchXx)
         y.append(batchYy)
 
-
     x = np.asarray(x)
     y = np.asarray(y)
 
+    return x, y, num_chars
 
-    return x, y
+_,_, num_chars = generateData()
+
+num_epochs = 100
+total_series_length = 50000
+truncated_backprop_length = num_classes * num_chars
+state_size = 6
+num_batches = total_series_length // batch_size // truncated_backprop_length
 
 
 batchX_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length])
@@ -86,7 +118,7 @@ losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=l
           zip(logits_series, labels_series)]
 total_loss = tf.reduce_mean(losses)
 
-train_step = tf.train.AdagradOptimizer(0.5).minimize(total_loss)
+train_step = tf.train.AdagradOptimizer(0.05).minimize(total_loss)
 
 
 def plot(loss_list, predictions_series, batchX, batchY):
@@ -109,16 +141,20 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.draw()
     plt.pause(0.0001)
 
+print ("here")
 np.set_printoptions(precision=1)
 with tf.Session() as sess:
-    sess.run(tf.initialize_all_variables())
+    init_op = tf.global_variables_initializer()
+    sess = tf.Session()
+    sess.run(init_op)
+
     plt.ion()
     plt.figure()
     plt.show()
     loss_list = []
 
     for epoch_idx in range(num_epochs):
-        x, y = generateData()
+        x, y, _ = generateData()
         _current_state = np.zeros((batch_size, state_size))
 
         print("New data, epoch", epoch_idx)
@@ -144,12 +180,15 @@ with tf.Session() as sess:
                 one_hot_output_series = np.array(_predictions_series)[:, batch_series_idx, :]
                 single_output_series = np.array([(1 if out[0] < 0.5 else 0) for out in one_hot_output_series])
 
-            print("Answer:")
-            print(batchY[0])
-            print("Prediction:")
-            print(single_output_series)
-            print("State:")
-            print(_current_state)
+            if batch_idx % 100 == 0:
+                print("Input:")
+                print(bitsToString(batchX[0], num_chars))
+                print("Answer:")
+                print(bitsToString(batchY[0], num_chars))
+                print("Prediction:")
+                print(bitsToString(single_output_series, num_chars))
+                print("State:")
+                print(_current_state)
 
             _current_state, _predictions_series = sess.run(
                 [current_state, predictions_series],
