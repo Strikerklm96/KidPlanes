@@ -2,6 +2,7 @@
 
 # comments are referencing this:
 # https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
+# LSTM references http://colah.github.io/posts/2015-08-Understanding-LSTMs/
 
 # TODO name all inputs to functions
 
@@ -58,6 +59,7 @@ current_state = init_state  # current_state will be passed to each next cell
 states_series = []
 # define the (15) cells all joined together. Here we are basically manually unrolling the RNN
 # Colors refer to "Schematic of the computations" which you should look at.
+# also reference
 for current_input in inputs_series:
 
     # defines the input to this cell as having 1 input (green)
@@ -66,7 +68,7 @@ for current_input in inputs_series:
     # just combines the input and previous state (green and blue)
     input_and_state = tf.concat([current_input, current_state], 1)
 
-    # computes
+    # computes the whole left hand side value of the equation except TODO wa or wb
     lhs = tf.matmul(input_and_state, W) + b #multiply, then add Broadcasted addition
 
     next_state = tf.tanh(lhs)
@@ -96,9 +98,9 @@ def plot(loss_list, predictions_series, batchX, batchY):
         plt.cla()
         plt.axis([0, truncated_backprop_length, 0, 2])
         left_offset = range(truncated_backprop_length)
-        plt.bar(left_offset, batchX[batch_series_idx, :] * 0.9, width=1, color="blue")  # input
-        plt.bar(left_offset, batchY[batch_series_idx, :] * 0.6, width=1, color="red")  # correct output
-        plt.bar(left_offset, single_output_series * 0.3, width=1, color="green")  # network output
+        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * 0.3, bottom=0.6, width=1, color="blue")  # input
+        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * 0.3, bottom=0.3, width=1, color="red")  # output
+        plt.bar(x=left_offset, height=single_output_series * 0.3, bottom=0, width=1, color="green")  # network guess
 
     plt.draw()
     plt.pause(0.0001)
