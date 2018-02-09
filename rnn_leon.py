@@ -54,7 +54,7 @@ sess.run(init_op)
 
 for i in range(100):
     sess.run(fetches=train_op, feed_dict={inputType: train_input, outputType: train_output})
-    val,other = sess.run(network, {inputType: train_input})
+    val, other = sess.run(network, {inputType: train_input})
     print(val)
     print(other)
 
