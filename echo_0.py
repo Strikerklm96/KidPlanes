@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 echo_step = 3  # by how many bits is the input shifted to produce the output
 num_epochs = 100  # how many epochs of training should we do?
 total_series_length = 50000  # what is total number of bits we should generate?
-truncated_backprop_length = 15  # how many bits should be in a single train stream?
+truncated_backprop_length = 30  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
 num_classes = 2  # TODO Having this low makes it faster and seem to split the data differently
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
@@ -57,9 +57,9 @@ labels_series = tf.unstack(batchY_placeholder, axis=1)
 # Forward pass
 current_state = init_state  # current_state will be passed to each next cell
 states_series = []
-# define the (15) cells all joined together. Here we are basically manually unrolling the RNN
+# defines how the (15) cells that are all joined together pass state. Here we are basically manually unrolling the RNN
 # Colors refer to "Schematic of the computations" which you should look at.
-# also reference
+# look at tanh in LSTM "The repeating module"
 for current_input in inputs_series:
 
     # defines the input to this cell as having 1 input (green)
@@ -69,17 +69,23 @@ for current_input in inputs_series:
     input_and_state = tf.concat([current_input, current_state], 1)
 
     # computes the whole left hand side value of the equation except TODO wa or wb
-    lhs = tf.matmul(input_and_state, W) + b #multiply, then add Broadcasted addition
+    lhs = tf.matmul(input_and_state, W) + b  # add b to each row.
 
+    # use the activation function on each value to compute the next state
     next_state = tf.tanh(lhs)
-    states_series.append(next_state)
-    current_state = next_state
+    states_series.append(next_state)  # remember the state so we can backprop properly
+    current_state = next_state  # get the new state
 
-logits_series = [tf.matmul(state, W2) + b2 for state in states_series]  # Broadcasted addition
+
+# the input has been wrapped into the states_series list
+# so when we want to compute the LSTM output ht, we multiply and bias for the output
+logits_series = [tf.matmul(state, W2) + b2 for state in states_series]
+# apply softmax (which basically just turns our guesses into more appropriate probability guess, (0.1, 0.4)->(0.2, 0.8) horray 10 is not a prime
 predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
 
 losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in
           zip(logits_series, labels_series)]
+
 total_loss = tf.reduce_mean(losses)
 
 train_step = tf.train.AdagradOptimizer(0.5).minimize(total_loss)
