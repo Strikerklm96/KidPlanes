@@ -141,7 +141,7 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.draw()
     plt.pause(0.0001)
 
-print ("here")
+print ("Starting To Train")
 np.set_printoptions(precision=1)
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()

@@ -1,3 +1,9 @@
+
+# https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
+
+# attempts to use tf paradigm
+
+
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
@@ -36,7 +42,7 @@ labels_series = tf.unstack(batchY_placeholder, axis=1)
 
 # Forward passes
 cell = tf.nn.rnn_cell.BasicRNNCell(state_size)
-states_series, current_state = tf.nn.dynamic_rnn(cell, inputs_series, initial_state=init_state)
+states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=inputs_series, initial_state=init_state)
 
 logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 predictions_series = [tf.nn.softmax(logits) for logits in logits_series]

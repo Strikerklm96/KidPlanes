@@ -1,17 +1,20 @@
 
 # https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
 
+# echos input by this many input steps
+
+
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+echo_step = 3
 num_epochs = 100
 total_series_length = 50000
 truncated_backprop_length = 15 # how many input/outputs should we do at once?
 state_size = 4
 num_classes = 3
-echo_step = 3
 batch_size = 5
 num_batches = total_series_length//batch_size//truncated_backprop_length
 

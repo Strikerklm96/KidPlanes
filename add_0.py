@@ -1,4 +1,8 @@
+
+# adds two random binary numbers
+
 #  copy pasted from https://gist.github.com/siemanko/b18ce332bde37e156034e5d3f60f8a23
+
 """Short and sweet LSTM implementation in Tensorflow.
 Motivation:
 When Tensorflow was released, adding RNNs was a bit of a hack - it required
@@ -174,6 +178,3 @@ for epoch in range(8):
     })
     print("Epoch %d, train error: %.2f, valid accuracy: %.1f %%" % (epoch, epoch_error, valid_accuracy * 100.0))
 
-
-print(session.run())
-session

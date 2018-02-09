@@ -1,3 +1,9 @@
+
+# attempts to echo from the original adder logic
+# fails to learn
+
+#  copy pasted from https://gist.github.com/siemanko/b18ce332bde37e156034e5d3f60f8a23
+
 """
     The problem we are trying to solve is adding two binary numbers. The
     numbers are reversed, so that the state of RNN can add the numbers
@@ -11,24 +17,6 @@ import numpy as np
 import random
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
-
-def charToClass(char):
-    classification = np.zeros(26)
-    index = ord(char) - ord('a')
-    classification[index] = 1
-    return classification
-
-def classToChar(arry):
-    return chr(np.argmax(arry) + ord('a'))
-
-# these are just for easy building of test data
-def as_bytes(num, final_size):
-    res = []
-    for _ in range(final_size):
-        res.append(num % 2)
-        num //= 2
-    return res
-
 
 def generate_example(num_bits):
     return random.getrandbits(num_bits)
