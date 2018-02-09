@@ -22,10 +22,10 @@ num_batches = total_series_length // batch_size // truncated_backprop_length
 
 def generateData():
     x = np.array(np.random.choice(2, total_series_length, p=[0.5, 0.5]))
-    y = np.roll(x, echo_step)
-    y[0:echo_step] = 0
+    y = np.roll(x, echo_step)  # just shifts the whole thing over by echo_step
+    y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
 
-    x = x.reshape((batch_size, -1))  # The first index changing slowest, subseries as rows
+    x = x.reshape((batch_size, -1))  # reshape this into a 2d vector where each entry has batch_size elements, and an unknown (-1) number of entries in it
     y = y.reshape((batch_size, -1))
 
     return x, y

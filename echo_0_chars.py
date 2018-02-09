@@ -118,7 +118,7 @@ losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=l
           zip(logits_series, labels_series)]
 total_loss = tf.reduce_mean(losses)
 
-train_step = tf.train.AdagradOptimizer(0.05).minimize(total_loss)
+train_step = tf.train.AdagradOptimizer(0.5).minimize(total_loss)
 
 
 def plot(loss_list, predictions_series, batchX, batchY):
