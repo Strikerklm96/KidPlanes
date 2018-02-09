@@ -78,7 +78,8 @@ for current_input in inputs_series:
 
 
 # the input has been wrapped into the states_series list
-# so when we want to compute the LSTM output ht, we multiply and bias for the output
+# LSTM: the states_series is storing the top line having already been tanh, multiplying x and adding bias +
+# LSTM: logits_series is the LSTM output ht, computed by tanh(state) * w2 + b
 logits_series = [tf.matmul(state, W2) + b2 for state in states_series]
 # apply softmax (which basically just turns our guesses into more appropriate probability guess, (0.1, 0.4)->(0.2, 0.8) horray 10 is not a prime
 predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
