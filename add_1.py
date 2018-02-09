@@ -1,6 +1,7 @@
 
 # attempts to echo from the original adder logic
-# fails to learn
+
+# broken : fails to learn
 
 #  copy pasted from https://gist.github.com/siemanko/b18ce332bde37e156034e5d3f60f8a23
 
