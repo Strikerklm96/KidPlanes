@@ -1,41 +1,45 @@
+# echos binary inputs
 
-# echos input by this many input steps
-
+# comments are referencing this:
 # https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
 
-
+# TODO name all inputs to functions
 
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-echo_step = 3
-num_epochs = 100
-total_series_length = 50000
-truncated_backprop_length = 15  # how many input/outputs should we do at once?
-state_size = 4
-num_classes = 3
-batch_size = 5
-num_batches = total_series_length // batch_size // truncated_backprop_length
+echo_step = 3  # by how many bits is the input shifted to produce the output
+num_epochs = 100  # how many epochs of training should we do?
+total_series_length = 50000  # what is total number of bits we should generate?
+truncated_backprop_length = 15  # how many bits should be in a single train stream?
+state_size = 4  # how many values should be passed to the next hidden layer
+num_classes = 2  # TODO Having this low makes it faster and seem to split the data differently
+batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
+# how many batches will be done to go over all the data
+batches_per_epoch = total_series_length // batch_size // truncated_backprop_length
 
 
 def generateData():
+    # 2 defines [0,1] as rand range, then how many, then rand distribution
     x = np.array(np.random.choice(2, total_series_length, p=[0.5, 0.5]))
-    y = np.roll(x, echo_step)  # just shifts the whole thing over by echo_step
+    y = np.roll(x, echo_step)  # just shifts the whole bit list over by echo_step
     y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
 
-    x = x.reshape((batch_size, -1))  # reshape this into a 2d vector where each entry has batch_size elements, and an unknown (-1) number of entries in it
+    # reshape this into a 2d vector where each entry has batch_size elements and an unknown (-1) number of entries in it
+    x = x.reshape((batch_size, -1))
     y = y.reshape((batch_size, -1))
 
-    return x, y
+    return x, y  # have shapes[batch_size, (remainder)] in this case, [5, 10000]
 
 
+# input, output, and state types
 batchX_placeholder = tf.placeholder(tf.float32, [batch_size, truncated_backprop_length])
 batchY_placeholder = tf.placeholder(tf.int32, [batch_size, truncated_backprop_length])
+init_state = tf.placeholder(tf.float32, [batch_size, state_size])  # this is a RNN, so we need a state type too
 
-init_state = tf.placeholder(tf.float32, [batch_size, state_size])
-
+# TODO how do these relate to the picture, this defines part of the cell, probably the powerhouse
 W = tf.Variable(np.random.rand(state_size + 1, state_size), dtype=tf.float32)
 b = tf.Variable(np.zeros((1, state_size)), dtype=tf.float32)
 
@@ -43,17 +47,29 @@ W2 = tf.Variable(np.random.rand(state_size, num_classes), dtype=tf.float32)
 b2 = tf.Variable(np.zeros((1, num_classes)), dtype=tf.float32)
 
 # Unpack columns
-inputs_series = tf.unstack(batchX_placeholder, axis=1)
+# keep in mind truncated_backprop_length = 15
+# this splits the [batch_size, truncated_backprop_length] tensors into (15) different tensors of shape (5,)
+# these are now lists of (15) tensors, each one defining a single cell's input or output
+inputs_series = tf.unstack(batchX_placeholder, axis=1)  # axis=1 says to split on the 2nd dimension (indexed on 0)
 labels_series = tf.unstack(batchY_placeholder, axis=1)
 
 # Forward pass
-current_state = init_state
+current_state = init_state  # current_state will be passed to each next cell
 states_series = []
+# define the (15) cells all joined together. Here we are basically manually unrolling the RNN
+# Colors refer to "Schematic of the computations" which you should look at.
 for current_input in inputs_series:
-    current_input = tf.reshape(current_input, [batch_size, 1])
-    input_and_state_concatenated = tf.concat([current_input, current_state], 1)  # Increasing number of columns
 
-    next_state = tf.tanh(tf.matmul(input_and_state_concatenated, W) + b)  # Broadcasted addition
+    # defines the input to this cell as having 1 input (green)
+    current_input = tf.reshape(tensor=current_input, shape=[batch_size, 1])
+
+    # just combines the input and previous state (green and blue)
+    input_and_state = tf.concat([current_input, current_state], 1)
+
+    # computes
+    lhs = tf.matmul(input_and_state, W) + b #multiply, then add Broadcasted addition
+
+    next_state = tf.tanh(lhs)
     states_series.append(next_state)
     current_state = next_state
 
@@ -90,7 +106,9 @@ def plot(loss_list, predictions_series, batchX, batchY):
 
 np.set_printoptions(precision=1)
 with tf.Session() as sess:
-    sess.run(tf.initialize_all_variables())
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+
     plt.ion()
     plt.figure()
     plt.show()
@@ -102,7 +120,7 @@ with tf.Session() as sess:
 
         print("New data, epoch", epoch_idx)
 
-        for batch_idx in range(num_batches):
+        for batch_idx in range(batches_per_epoch):
             start_idx = batch_idx * truncated_backprop_length
             end_idx = start_idx + truncated_backprop_length
 

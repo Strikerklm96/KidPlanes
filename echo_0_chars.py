@@ -48,11 +48,11 @@ print (str)
 batch_size = 5
 
 def generateData():
-    text = "hi"
-    end = "hi"
+    text = "abcd"
+    end = "abcd"
     num_chars = len(text)
-    cause1 = stringToBits("hi", 2)#text, num_chars)
-    result1 = stringToBits("hi", 2)#text[1:] + end, num_chars)
+    cause1 = stringToBits(text, 2)#text, num_chars)
+    result1 = stringToBits(text, 2)#text[1:] + end, num_chars)
    # cause2 = [1, 1, 1]
     #result2 = [1, 1, 1]
 
