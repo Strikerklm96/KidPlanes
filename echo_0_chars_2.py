@@ -1,5 +1,3 @@
-
-
 # echos binary inputs
 
 # comments are referencing this:
@@ -18,15 +16,16 @@ num_epochs = 100  # how many epochs of training should we do?
 total_series_length = 50000  # what is total number of bits we should generate?
 truncated_backprop_length = 30  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
-num_classes = 2  # defines OUTPUT vector length
+num_classes = 3  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data
 batches_per_epoch = total_series_length // batch_size // truncated_backprop_length
 learning_rate = 0.5  # rate passed to optimizer (this value is important)
 
+
 def generateData():
     # 2 defines [0,1] as rand range, then how many, then rand distribution
-    x = np.array(np.random.choice(2, total_series_length, p=[0.5, 0.5]))
+    x = np.array(np.random.choice(num_classes, total_series_length))
     y = np.roll(x, echo_step)  # just shifts the whole bit list over by echo_step
     y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
 
@@ -102,22 +101,33 @@ total_loss = tf.reduce_mean(input_tensor=losses)
 train_step = tf.train.AdagradOptimizer(learning_rate=learning_rate).minimize(total_loss)
 
 
+def decode(coded):
+    vals = np.zeros(len(coded))
+    for i in range(len(coded)):
+        vals[i] = (np.argmax(coded[i]))
+
+    return vals
+
+
 def plot(loss_list, predictions_series, batchX, batchY):
     plt.subplot(2, 3, 1)
     plt.cla()
     plt.plot(loss_list)
 
     for batch_series_idx in range(5):
-        one_hot_output_series = np.array(predictions_series)[:, batch_series_idx, :]
-        single_output_series = np.array([(1 if out[0] < 0.5 else 0) for out in one_hot_output_series])
+        coded = np.array(predictions_series)[:, batch_series_idx, :]
+        single_output_series = decode(coded)
 
         plt.subplot(2, 3, batch_series_idx + 2)
         plt.cla()
         plt.axis([0, truncated_backprop_length, 0, 2])
         left_offset = range(truncated_backprop_length)
-        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * 0.3, bottom=0.6, width=1, color="blue")  # input
-        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * 0.3, bottom=0.3, width=1, color="red")  # output
-        plt.bar(x=left_offset, height=single_output_series * 0.3, bottom=0, width=1, color="green")  # network guess
+
+        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * 0.2, bottom=1.2, width=1, color="blue")  # input
+
+        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * 0.2, bottom=0.6, width=1, color="red")  # output
+
+        plt.bar(x=left_offset, height=single_output_series * 0.2, bottom=0, width=1, color="green")  # network guess
 
     plt.draw()
     plt.pause(0.0001)
@@ -148,8 +158,10 @@ with tf.Session() as sess:
             end_batch_pos = start_batch_pos + truncated_backprop_length
 
             # for all lists in this list, grab this range [start_batch_pos:end_batch_pos)
-            batchX = x[:, start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
-            batchY = y[:, start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
+            batchX = x[:,
+                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
+            batchY = y[:,
+                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
 
             # _total_loss is just the average loss across this batch, so a float
             # _train_step is None
@@ -160,14 +172,15 @@ with tf.Session() as sess:
                 feed_dict={
                     batchX_placeholder: batchX,  # input for this batch
                     batchY_placeholder: batchY,  # output (answers) for this batch
-                    init_state: _current_state   # initial state of this batch (hopefully carried over from last time)
+                    init_state: _current_state
+                    # initial state of this batch (hopefully carried over from last time)
                 })
 
             # keep track of the loss values so we can plot them
             loss_list.append(_total_loss)
 
             # don't display more than n in the graph
-            if(len(loss_list) > 2000):
+            if (len(loss_list) > 2000):
                 del loss_list[0]
 
             # every n batches, print an update
@@ -176,32 +189,34 @@ with tf.Session() as sess:
                 # update the plots
                 plot(loss_list, _predictions_series, batchX, batchY)
 
-                if batch_i % 500 == 0:
+                if batch_i % 400 == 0:
                     mini_batch_prediction = []
                     rounded_prediction = []
-                    for batch_series_i in range(1):  # just grab the first one (returns value 0)
+                    batch_series_i = 2  # use the third run so the state and first few values make sense
+                    # TODO why do the values still not make sense?
 
-                        # predictions_series has shape [30, 5, 2]
-                        # because [truncated_backprop_length, batch_size, num_classes]
-                        # np.array so we can use fancy index -> [magic, python, indexing]
-                        # grab all time outputs, for batch (batch_series_i) and all class output values
-                        mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
+                    # predictions_series has shape [30, 5, 2]
+                    # because [truncated_backprop_length, batch_size, num_classes]
+                    # np.array so we can use fancy index -> [magic, python, indexing]
+                    # grab all time outputs, for batch (batch_series_i) and all class output values
+                    mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
 
-                        # each output is a list [num_classes]
-                        # decode mini_batch_prediction outputs to go to either 0 or 1 instead of the one hot classes
-                        # out[0] can be compared to 0.5 because tf.nn.softmax(logits) turned the guesses
-                        # into probabilities.
-                        # out[0] is the probability of 0 being the right answer
-                        # out[1] is the probability of 1 being the right answer
-                        rounded_prediction = np.array([(1 if out[0] < 0.5 else 0) for out in mini_batch_prediction])
+                    # each output is a list [num_classes]
+                    # decode mini_batch_prediction outputs to go to either 0 or 1 instead of the one hot classes
+                    # out[0] can be compared to 0.5 because tf.nn.softmax(logits) turned the guesses
+                    # into probabilities.
+                    # out[0] is the probability of 0 being the right answer
+                    # out[1] is the probability of 1 being the right answer
+                    rounded_prediction = decode(mini_batch_prediction)
 
                     print("Answer:")
-                    print(batchY[0, :])  # batch 0 and all time step outputs
+                    print(batchY[batch_series_i, :])  # batch 0 and all time step outputs
                     print("Prediction:")
-                    print(rounded_prediction)
+                    print("[", end="")
+                    print(*rounded_prediction, sep=" ", end="")
+                    print("]")
                     print("Resulting State:")
-                    print(_current_state[0])  # the resulting state after
+                    print(_current_state[batch_series_i])  # the resulting state after the run
 
 plt.ioff()
 plt.show()
-
