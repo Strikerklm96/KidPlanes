@@ -1,3 +1,5 @@
+
+
 # echos binary inputs
 
 # comments are referencing this:
@@ -23,7 +25,7 @@ batches_per_epoch = total_series_length // batch_size // truncated_backprop_leng
 learning_rate = 0.5  # rate passed to optimizer (this value is important)
 
 def generateData():
-    # 2 defines [0,1] as rand range, then how many, then the odds of each
+    # 2 defines [0,1] as rand range, then how many, then rand distribution
     x = np.array(np.random.choice(2, total_series_length, p=[0.5, 0.5]))
     y = np.roll(x, echo_step)  # just shifts the whole bit list over by echo_step
     y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
@@ -202,3 +204,4 @@ with tf.Session() as sess:
 
 plt.ioff()
 plt.show()
+
