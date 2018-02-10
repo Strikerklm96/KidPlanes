@@ -4,8 +4,6 @@
 # https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
 # LSTM references http://colah.github.io/posts/2030-08-Understanding-LSTMs/
 
-# TODO name all inputs to functions
-
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
@@ -16,10 +14,11 @@ num_epochs = 100  # how many epochs of training should we do?
 total_series_length = 50000  # what is total number of bits we should generate?
 truncated_backprop_length = 30  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
-num_classes = 3  # defines OUTPUT vector length
+num_classes = 5  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
-# how many batches will be done to go over all the data
-batches_per_epoch = total_series_length // batch_size // truncated_backprop_length
+# how many batches will be done to go over all the data, note that since we are using integer division: //
+# not all the data will get used
+batches_per_epoch = total_series_length // batch_size // truncated_backprop_length # results in 333
 learning_rate = 0.5  # rate passed to optimizer (this value is important)
 
 
@@ -123,11 +122,14 @@ def plot(loss_list, predictions_series, batchX, batchY):
         plt.axis([0, truncated_backprop_length, 0, 2])
         left_offset = range(truncated_backprop_length)
 
-        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * 0.2, bottom=1.2, width=1, color="blue")  # input
+        barHeight = 0.1
+        nextBars = barHeight * num_classes
 
-        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * 0.2, bottom=0.6, width=1, color="red")  # output
+        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * barHeight, bottom=nextBars * 2, width=1, color="red")  # input
 
-        plt.bar(x=left_offset, height=single_output_series * 0.2, bottom=0, width=1, color="green")  # network guess
+        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * barHeight, bottom=nextBars * 1, width=1, color="green")  # output
+
+        plt.bar(x=left_offset, height=single_output_series * barHeight, bottom=nextBars * 0, width=1, color="blue")  # network guess
 
     plt.draw()
     plt.pause(0.0001)
