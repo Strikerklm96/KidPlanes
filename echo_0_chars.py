@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-num_classes = 26
+num_classes = 2
 
 def charToClass(char):
     classification = np.zeros(26)
