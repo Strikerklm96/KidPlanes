@@ -1,4 +1,8 @@
-# echos binary inputs
+# echos inputs
+# can use many different num_classes
+# Note that this program DOES NOT implement an LSTM.
+# this program computes the new state based on the new input and old state.
+# computes the output based only on the old state
 
 # comments are referencing this:
 # https://medium.com/@erikhallstrm/hello-world-rnn-83cd7105b767
@@ -11,20 +15,20 @@ import matplotlib.pyplot as plt
 
 echo_step = 3  # by how many bits is the input shifted to produce the output
 num_epochs = 100  # how many epochs of training should we do?
-total_series_length = 50000  # what is total number of bits we should generate?
+epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
 truncated_backprop_length = 30  # how many bits should be in a single train stream?
-state_size = 4  # how many values should be passed to the next hidden layer
+state_size = 20  # how many values should be passed to the next hidden layer
 num_classes = 5  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
-batches_per_epoch = total_series_length // batch_size // truncated_backprop_length # results in 333
-learning_rate = 0.5  # rate passed to optimizer (this value is important)
+batches_per_epoch = epoch_input_length // batch_size // truncated_backprop_length  # results in 333
+learning_rate = 0.05  # rate passed to optimizer (this value is important)
 
 
 def generateData():
     # 2 defines [0,1] as rand range, then how many, then rand distribution
-    x = np.array(np.random.choice(num_classes, total_series_length))
+    x = np.array(np.random.choice(num_classes, epoch_input_length))
     y = np.roll(x, echo_step)  # just shifts the whole bit list over by echo_step
     y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
 
@@ -79,17 +83,23 @@ for current_input in inputs_series:
     states_series.append(next_state)  # remember the state so we can backprop properly
     current_state = next_state  # get the new state
 
+# shape [30,5,5] because [truncated_backprop_length,
 # the input has been wrapped into the states_series list
 # LSTM: the states_series is storing the top line having already been tanh, multiplying x and adding bias +
 # LSTM: logits_series is the LSTM output ht, computed by tanh(state) * w2 + b
 logits_series = [tf.matmul(state, output_weight) + output_bias for state in
-                 states_series]  # logits_series is basically output series with size (30)
+                 states_series]  # logits_series is basically output series with size [30, num_classes]
 
-# apply softmax (which basically just turns our guesses into more appropriate probability guess, (0.1, 0.4)->(0.2, 0.8)
-predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
+# create another output, but apply (next line)
+# softmax (which basically just turns the output into probabilities instead of arbitrary
+# values, so they sum to 1: [0.1, 0.4] would be turned to [0.2, 0.8], or [3, 6] -> [0.33, 0.33]
+# just looking at logits_series is also fine
+predictions_series = [tf.nn.softmax(logits) for logits in logits_series]  # or you could do = logits_series
 
 # compute how wrong the guess is by comparing the output(logits) to the correct output (labels)
-# https://www.tensorflow.org/api_docs/python/tf/nn/sparse_softmax_cross_entropy_with_logits
+# note that the logits results in a vector that is onehot encoded, so [0 0 1 0], but labels is just the value of the
+# index that should be 1, so 2. That is what sparse_softmax_cross_entropy_with_logits does
+# https://stackoverflow.com/questions/37312421/tensorflow-whats-the-difference-between-sparse-softmax-cross-entropy-with-logi
 losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in
           zip(logits_series, labels_series)]
 
@@ -109,15 +119,16 @@ def decode(coded):
 
 
 def plot(loss_list, predictions_series, batchX, batchY):
-    plt.subplot(2, 3, 1)
+    ax = plt.subplot(2, 3, 1)
     plt.cla()
     plt.plot(loss_list)
+    ax.set_ylim(ymin=0)  # always show y0 and
 
     for batch_series_idx in range(5):
         coded = np.array(predictions_series)[:, batch_series_idx, :]
         single_output_series = decode(coded)
 
-        plt.subplot(2, 3, batch_series_idx + 2)
+        plt.subplot(2, 3, batch_series_idx + 2)  # select the next plot to draw on
         plt.cla()
         plt.axis([0, truncated_backprop_length, 0, 2])
         left_offset = range(truncated_backprop_length)
@@ -125,11 +136,14 @@ def plot(loss_list, predictions_series, batchX, batchY):
         barHeight = 0.1
         nextBars = barHeight * num_classes
 
-        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * barHeight, bottom=nextBars * 2, width=1, color="red")  # input
+        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * barHeight, bottom=nextBars * 2, width=1,
+                color="red")  # input
 
-        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * barHeight, bottom=nextBars * 1, width=1, color="green")  # output
+        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * barHeight, bottom=nextBars * 1, width=1,
+                color="green")  # output
 
-        plt.bar(x=left_offset, height=single_output_series * barHeight, bottom=nextBars * 0, width=1, color="blue")  # network guess
+        plt.bar(x=left_offset, height=single_output_series * barHeight, bottom=nextBars * 0, width=1,
+                color="blue")  # network guess
 
     plt.draw()
     plt.pause(0.0001)
@@ -154,6 +168,7 @@ with tf.Session() as sess:
 
         print("New data, epoch:", epoch)
 
+        sub_loss_list = []  # store the loss value because displaying every single one is silly
         for batch_i in range(batches_per_epoch):
             # find where in the data to start for this batch
             start_batch_pos = batch_i * truncated_backprop_length
@@ -179,7 +194,13 @@ with tf.Session() as sess:
                 })
 
             # keep track of the loss values so we can plot them
-            loss_list.append(_total_loss)
+            sub_loss_list.append(_total_loss)
+            num_loss_avg = 20  # average accross this many to prevent spikes
+            if(len(sub_loss_list) >= num_loss_avg):
+                averageValue = [np.average(sub_loss_list)]
+                averageValue = averageValue * num_loss_avg  # repeat this value num_loss_avg times
+                sub_loss_list = []
+                loss_list.extend(averageValue)
 
             # don't display more than n in the graph
             if (len(loss_list) > 2000):
