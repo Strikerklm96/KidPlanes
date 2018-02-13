@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 echo_step = 3  # by how many bits is the input shifted to produce the output
 num_epochs = 100  # how many epochs of training should we do?
 total_series_length = 50000  # what is total number of bits we should generate?
-truncated_backprop_length = 30  # how many bits should be in a single train stream?
+truncated_backprop_length = 15  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
 num_classes = 2  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
