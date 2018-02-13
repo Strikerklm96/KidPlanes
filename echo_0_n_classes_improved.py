@@ -22,14 +22,14 @@ import matplotlib.pyplot as plt
 echo_step = 3  # by how many bits is the input shifted to produce the output
 num_epochs = 100  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
-truncated_backprop_length = 20  # how many bits should be in a single train stream?
+truncated_backprop_length = 10  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
 num_classes = 3  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
 batches_per_epoch = epoch_input_length // batch_size // truncated_backprop_length  # results in 333
-learning_rate = 0.5  # rate passed to optimizer (this value is important)
+learning_rate = 0.02  # rate passed to optimizer (this value is important)
 input_classes = num_classes
 
 
@@ -37,6 +37,7 @@ def generateRandomClassVector():
     vector = np.zeros(input_classes)
     vector[np.random.randint(0, input_classes)] = 1
     return vector
+
 
 def generateData():
     inputs = np.empty((epoch_input_length, input_classes))
@@ -151,10 +152,12 @@ def plot(loss_list, predictions_series, batchX, batchY):
         barHeight = 0.1
         nextBars = barHeight * num_classes
 
-        plt.bar(x=left_offset, height=batchX[batch_series_idx, :] * barHeight, bottom=nextBars * 2, width=1,
+        print()
+
+        plt.bar(x=left_offset, height=decode(batchX[batch_series_idx, :]) * barHeight, bottom=nextBars * 2, width=1,
                 color="red")  # input
 
-        plt.bar(x=left_offset, height=batchY[batch_series_idx, :] * barHeight, bottom=nextBars * 1, width=1,
+        plt.bar(x=left_offset, height=decode(batchY[batch_series_idx, :]) * barHeight, bottom=nextBars * 1, width=1,
                 color="green")  # output
 
         plt.bar(x=left_offset, height=single_output_series * barHeight, bottom=nextBars * 0, width=1,
@@ -211,7 +214,7 @@ with tf.Session() as sess:
             # keep track of the loss values so we can plot them
             sub_loss_list.append(_total_loss)
             num_loss_avg = 20  # average accross this many to prevent spikes
-            if(len(sub_loss_list) >= num_loss_avg):
+            if (len(sub_loss_list) >= num_loss_avg):
                 averageValue = [np.average(sub_loss_list)]
                 averageValue = averageValue * num_loss_avg  # repeat this value num_loss_avg times
                 sub_loss_list = []
@@ -225,39 +228,39 @@ with tf.Session() as sess:
             if batch_i % 100 == 0:
                 print("Step:", batch_i, "Loss:", _total_loss)
                 # update the plots
-#                plot(loss_list, _predictions_series, batchX, batchY)
+                plot(loss_list, _predictions_series, batchX, batchY)
 
-                if batch_i % 400 == 0:
-                    mini_batch_prediction = []
-                    rounded_prediction = []
-                    batch_series_i = 2  # use the third run so the state and first few values make sense
-                    # TODO why do the values still not make sense?
+                #if batch_i % 400 == 0:
+                mini_batch_prediction = []
+                rounded_prediction = []
+                batch_series_i = 2  # use the third run so the state and first few values make sense
+                # TODO why do the values still not make sense?
 
-                    # predictions_series has shape [30, 5, 2]
-                    # because [truncated_backprop_length, batch_size, num_classes]
-                    # np.array so we can use fancy index -> [magic, python, indexing]
-                    # grab all time outputs, for batch (batch_series_i) and all class output values
-                    mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
-                    rounded_answer = decode(mini_batch_prediction)
+                # predictions_series has shape [30, 5, 2]
+                # because [truncated_backprop_length, batch_size, num_classes]
+                # np.array so we can use fancy index -> [magic, python, indexing]
+                # grab all time outputs, for batch (batch_series_i) and all class output values
+                mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
 
-                    # each output is a list [num_classes]
-                    # decode mini_batch_prediction outputs to go to either 0 or 1 instead of the one hot classes
-                    # out[0] can be compared to 0.5 because tf.nn.softmax(logits) turned the guesses
-                    # into probabilities.
-                    # out[0] is the probability of 0 being the right answer
-                    # out[1] is the probability of 1 being the right answer
-                    rounded_prediction = decode(mini_batch_prediction)
+                # each output is a list [num_classes]
+                # decode mini_batch_prediction outputs to go to either 0 or 1 instead of the one hot classes
+                # out[0] can be compared to 0.5 because tf.nn.softmax(logits) turned the guesses
+                # into probabilities.
+                # out[0] is the probability of 0 being the right answer
+                # out[1] is the probability of 1 being the right answer
+                rounded_answer = decode(batchY[batch_series_i, :])
+                rounded_prediction = decode(mini_batch_prediction)
 
-                    print("Answer:")
-                    print("[", end="")
-                    print(*rounded_answer, sep=" ", end="")
-                    print("]")
-                    print("Prediction:")
-                    print("[", end="")
-                    print(*rounded_prediction, sep=" ", end="")
-                    print("]")
-                    print("Resulting State:")
-                    print(_current_state[batch_series_i])  # the resulting state after the run
+                print("Answer:")
+                print("[", end="")
+                print(*rounded_answer, sep=" ", end="")
+                print("]")
+                print("Prediction:")
+                print("[", end="")
+                print(*rounded_prediction, sep=" ", end="")
+                print("]")
+                print("Resulting State:")
+                print(_current_state[batch_series_i])  # the resulting state after the run
 
 plt.ioff()
 plt.show()
