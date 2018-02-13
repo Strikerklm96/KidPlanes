@@ -8,7 +8,7 @@
 
 # has more difficulty if you:
 # increase output_classes
-# increase truncated_backprop_length
+# increase bpl
 # mess with learning_rate
 
 
@@ -24,14 +24,14 @@ import matplotlib.pyplot as plt
 echo_step = 3  # by how many bits is the input shifted to produce the output
 num_epochs = 100  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
-truncated_backprop_length = 10  # how many bits should be in a single train stream?
+bpl = 10  # "back prop length" how many values should be in a single training stream?
 state_size = 4  # how many values should be passed to the next hidden layer
-output_classes = 3  # defines OUTPUT vector length
+output_classes = 8  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
-batches_per_epoch = epoch_input_length // batch_size // truncated_backprop_length  # results in 333
-learning_rate = 0.3  # rate passed to optimizer (this value is important)
+batches_per_epoch = epoch_input_length // batch_size // bpl  # results in 333
+learning_rate = 0.1  # rate passed to optimizer (this value is important)
 input_classes = output_classes
 
 
@@ -57,8 +57,8 @@ def generateData():
 
 
 # input, output, and state types
-batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, truncated_backprop_length, input_classes])
-batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, truncated_backprop_length, output_classes])
+batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, bpl, input_classes])
+batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, bpl, output_classes])
 init_state = tf.placeholder(dtype=tf.float32,
                             shape=[batch_size, state_size])  # this is a RNN, so we need a state type too
 
@@ -72,33 +72,38 @@ output_weight = tf.Variable(np.random.rand(state_size, output_classes), dtype=tf
 output_bias = tf.Variable(np.zeros(shape=(1, output_classes)), dtype=tf.float32)
 
 # Unpack columns
-# keep in mind truncated_backprop_length = 30
-# this splits the [truncated_backprop_length, batch_size] tensors
-# into (truncated_backprop_length) different tensors of shape (batch_size, input_classes)
-# these are now lists of (30) tensors, each one defining a single cell's input or output per batch
-# Unpack columns
-
-# Forward passes
+# defines a basic RNN cell with a given state size
+# time_major=False just dictates the order of the shape of inputs
+# states_series is a tensor of shape [batch_size, bpl, state_size]
+# current state isn't really used here
 cell = tf.nn.rnn_cell.BasicRNNCell(state_size)
-states_series, current_state = tf.nn.dynamic_rnn(cell, batchX_placeholder, initial_state=init_state, time_major=False)
+states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=batchX_placeholder, initial_state=init_state, time_major=False)
 
-# shape [truncated_backprop_length, batch_size, output_classes]
+# shape [bpl, batch_size, output_classes]
 # the input has been wrapped into the states_series list
-# LSTM: the states_series is storing the top line having already been tanh, multiplying x and adding bias +
+# LSTM: the states_series is storing the top line having already been through tanh, multiplying x and adding bias +
 # LSTM: logits_series is the LSTM output ht, computed by tanh(state) * w2 + b
-logits_series = [tf.matmul(state, output_weight) + output_bias for state in
-                 states_series]  # logits_series is basically output series with size [30, output_classes]
+logits_series = []  # = tf.placeholder(dtype=tf.float32, shape=[bpl, batch_size, output_classes])
+states_series = tf.transpose(states_series, [1, 0, 2]) # reshape the states_series because tf is Jank A.F.
+for i in range(bpl):  # logits_series is basically output series with size [30, output_classes]
+    logits_series.append(tf.matmul(states_series[i], output_weight) + output_bias)
+
 
 # create another output, but apply (next line)
 # softmax (which basically just turns the output into probabilities instead of arbitrary
 # values, so they sum to 1: [0.1, 0.4] would be turned to [0.2, 0.8], or [3, 6] -> [0.33, 0.33]
 # just looking at logits_series is also fine
-predictions_series = [tf.nn.softmax(logits) for logits in logits_series]  # or you could do = logits_series
+# defines what the nn should pass back to us for this argument
+predictions_series = []
+for i in range(bpl):
+    predictions_series.append(tf.nn.softmax(logits_series[i]))
 
 # compute how wrong the guess is by comparing the output(logits) to the correct output (labels)
 # note that the logits results in a vector that is onehot encoded, so [0 0 1 0], but labels is just the value of the
 # index that should be 1, so 2. That is what sparse_softmax_cross_entropy_with_logits does
 # https://stackoverflow.com/questions/37312421/tensorflow-whats-the-difference-between-sparse-softmax-cross-entropy-with-logi
+
+labels_series = tf.unstack(batchY_placeholder, axis=1)  # reshape so it can be used in zip
 losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in
           zip(logits_series, labels_series)]
 
@@ -129,8 +134,8 @@ def plot(loss_list, predictions_series, batchX, batchY):
 
         plt.subplot(2, 3, batch_series_idx + 2)  # select the next plot to draw on
         plt.cla()
-        plt.axis([0, truncated_backprop_length, 0, 2])
-        left_offset = range(truncated_backprop_length)
+        plt.axis([0, bpl, 0, 2])
+        left_offset = range(bpl)
 
         barHeight = 0.1
         nextBars = barHeight * output_classes
@@ -172,19 +177,19 @@ with tf.Session() as sess:
         sub_loss_list = []  # store the loss value because displaying every single one is silly
         for batch_i in range(batches_per_epoch):
             # find where in the data to start for this batch
-            start_batch_pos = batch_i * truncated_backprop_length
-            end_batch_pos = start_batch_pos + truncated_backprop_length
+            start_batch_pos = batch_i * bpl
+            end_batch_pos = start_batch_pos + bpl
 
             # for all lists in this list, grab this range [start_batch_pos:end_batch_pos)
             batchX = x[:,
-                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
+                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, bpl]
             batchY = y[:,
-                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, truncated_backprop_length]
+                     start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, bpl]
 
             # _total_loss is just the average loss across this batch, so a float
             # _train_step is None
             # _current_state is shape [5, 4] because [batch_size, state_size] it will be fed to next batch
-            # _predictions_series has shape [30, 5, 2] because [truncated_backprop_length, batch_size, output_classes]
+            # _predictions_series has shape [30, 5, 2] because [bpl, batch_size, output_classes]
             _total_loss, _train_step, _current_state, _predictions_series = sess.run(
                 [total_loss, train_step, current_state, predictions_series],
                 feed_dict={
@@ -220,7 +225,7 @@ with tf.Session() as sess:
                     # TODO why do the values still not make sense?
 
                     # predictions_series has shape [30, 5, 2]
-                    # because [truncated_backprop_length, batch_size, output_classes]
+                    # because [bpl, batch_size, output_classes]
                     # np.array so we can use fancy index -> [magic, python, indexing]
                     # grab all time outputs, for batch (batch_series_i) and all class output values
                     mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
