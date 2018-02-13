@@ -24,36 +24,44 @@ num_epochs = 100  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
 truncated_backprop_length = 20  # how many bits should be in a single train stream?
 state_size = 4  # how many values should be passed to the next hidden layer
-num_classes = 4  # defines OUTPUT vector length
+num_classes = 3  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
 batches_per_epoch = epoch_input_length // batch_size // truncated_backprop_length  # results in 333
 learning_rate = 0.5  # rate passed to optimizer (this value is important)
+input_classes = num_classes
 
+
+def generateRandomClassVector():
+    vector = np.zeros(input_classes)
+    vector[np.random.randint(0, input_classes)] = 1
+    return vector
 
 def generateData():
-    # 2 defines [0,1] as rand range, then how many, then rand distribution
-    x = np.array(np.random.choice(num_classes, epoch_input_length))
-    y = np.roll(x, echo_step)  # just shifts the whole bit list over by echo_step
-    y[0:echo_step] = 0  # sets the beginning values here to be 0 since they are garbage
+    inputs = np.empty((epoch_input_length, input_classes))
+    for i in range(epoch_input_length):
+        v = generateRandomClassVector()
+        inputs[i] = v
+
+    outputs = np.roll(inputs, echo_step)  # just shifts the whole bit list over by echo_step
 
     # reshape this into a 2d vector where each entry has batch_size elements and an unknown (-1) number of entries in it
-    x = x.reshape((batch_size, -1))
-    y = y.reshape((batch_size, -1))
+    inputs = inputs.reshape((batch_size, -1, input_classes))
+    outputs = outputs.reshape((batch_size, -1, num_classes))
 
-    return x, y  # have shapes[batch_size, (remainder)] in this case, [5, 10000]
+    return inputs, outputs  # have shapes[batch_size, (remainder)] in this case, [5, 10000]
 
 
 # input, output, and state types
-batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, truncated_backprop_length])
-batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, truncated_backprop_length])
+batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, truncated_backprop_length, input_classes])
+batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, truncated_backprop_length, num_classes])
 init_state = tf.placeholder(dtype=tf.float32,
                             shape=[batch_size, state_size])  # this is a RNN, so we need a state type too
 
 # used to compute the state given the old state and NEW input
 # note that this is not an LSTM for at least 1 reason: the OLD output was not fed to us
-state_weight = tf.Variable(np.random.rand(state_size + 1, state_size), dtype=tf.float32)
+state_weight = tf.Variable(np.random.rand(state_size + input_classes, state_size), dtype=tf.float32)
 state_bias = tf.Variable(np.zeros(shape=(1, state_size)), dtype=tf.float32)
 
 # used to compute the output given the state
@@ -62,7 +70,8 @@ output_bias = tf.Variable(np.zeros(shape=(1, num_classes)), dtype=tf.float32)
 
 # Unpack columns
 # keep in mind truncated_backprop_length = 30
-# this splits the [truncated_backprop_length, batch_size] tensors into (30) different tensors of shape (5,)
+# this splits the [truncated_backprop_length, batch_size] tensors
+# into (truncated_backprop_length) different tensors of shape (batch_size, input_classes)
 # these are now lists of (30) tensors, each one defining a single cell's input or output per batch
 inputs_series = tf.unstack(batchX_placeholder, axis=1)  # axis=1 says to split on the 2nd dimension (indexed on 0)
 labels_series = tf.unstack(batchY_placeholder, axis=1)
@@ -75,7 +84,7 @@ states_series = []  # states_series is (30) elements long because truncated_back
 # look at tanh in LSTM "The repeating module"
 for current_input in inputs_series:
     # defines the input to this cell as having 1 input (green)
-    current_input = tf.reshape(tensor=current_input, shape=[batch_size, 1])
+    current_input = tf.reshape(tensor=current_input, shape=[batch_size, input_classes])
 
     # just combines the input and previous state (green and blue)
     # has shape 5,1 because [batch_size, number of inputs]
@@ -89,7 +98,7 @@ for current_input in inputs_series:
     states_series.append(next_state)  # remember the state so we can backprop properly
     current_state = next_state  # get the new state
 
-# shape [30,5,5] because [truncated_backprop_length,
+# shape [truncated_backprop_length, batch_size, num_classes]
 # the input has been wrapped into the states_series list
 # LSTM: the states_series is storing the top line having already been tanh, multiplying x and adding bias +
 # LSTM: logits_series is the LSTM output ht, computed by tanh(state) * w2 + b
@@ -106,7 +115,7 @@ predictions_series = [tf.nn.softmax(logits) for logits in logits_series]  # or y
 # note that the logits results in a vector that is onehot encoded, so [0 0 1 0], but labels is just the value of the
 # index that should be 1, so 2. That is what sparse_softmax_cross_entropy_with_logits does
 # https://stackoverflow.com/questions/37312421/tensorflow-whats-the-difference-between-sparse-softmax-cross-entropy-with-logi
-losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in
+losses = [tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in
           zip(logits_series, labels_series)]
 
 # computes average value across all values in input_tensor (can do more if fed more values)
@@ -216,7 +225,7 @@ with tf.Session() as sess:
             if batch_i % 100 == 0:
                 print("Step:", batch_i, "Loss:", _total_loss)
                 # update the plots
-                plot(loss_list, _predictions_series, batchX, batchY)
+#                plot(loss_list, _predictions_series, batchX, batchY)
 
                 if batch_i % 400 == 0:
                     mini_batch_prediction = []
@@ -229,6 +238,7 @@ with tf.Session() as sess:
                     # np.array so we can use fancy index -> [magic, python, indexing]
                     # grab all time outputs, for batch (batch_series_i) and all class output values
                     mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
+                    rounded_answer = decode(mini_batch_prediction)
 
                     # each output is a list [num_classes]
                     # decode mini_batch_prediction outputs to go to either 0 or 1 instead of the one hot classes
@@ -239,7 +249,9 @@ with tf.Session() as sess:
                     rounded_prediction = decode(mini_batch_prediction)
 
                     print("Answer:")
-                    print(batchY[batch_series_i, :])  # batch 0 and all time step outputs
+                    print("[", end="")
+                    print(*rounded_answer, sep=" ", end="")
+                    print("]")
                     print("Prediction:")
                     print("[", end="")
                     print(*rounded_prediction, sep=" ", end="")
