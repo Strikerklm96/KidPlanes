@@ -6,6 +6,8 @@
 # this program computes the new state based on the new input and old state.
 # computes the output based only on the old state
 
+# TODO there is amistake somewhere in here. echo 2 doesnt have to have output_classes = state_size, but this does
+
 # has more difficulty if you:
 # increase output_classes
 # increase bpl
@@ -21,19 +23,19 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-echo_step = 3  # by how many bits is the input shifted to produce the output
-num_epochs = 100  # how many epochs of training should we do?
+echo_step = 2  # by how many bits is the input shifted to produce the output
+num_epochs = 300  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
-bpl = 15  # "back prop length" how many values should be in a single training stream?
-state_size = 5  # how many values should be passed to the next hidden layer
+bpl = 10  # "back prop length" how many values should be in a single training stream?
+state_size = 50  # how many values should be passed to the next hidden layer
 output_classes = 5  # defines OUTPUT vector length
-batch_size = 10  # how many series to process simultaneously. look at "Schematic of the training data"
+batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
 batches_per_epoch = epoch_input_length // batch_size // bpl  # results in 333
 learning_rate = 0.1  # rate passed to optimizer (this value is important)
 input_classes = output_classes
-num_layers = 3
+num_layers = 2
 
 def generateRandomClassVector():
     vector = np.zeros(input_classes)
@@ -60,7 +62,7 @@ def generateData():
 batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, bpl, input_classes])
 batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, bpl, output_classes])
 
-
+# tuple size is 2
 init_state = tf.placeholder(tf.float32, [num_layers, 2, batch_size, state_size])
 layer = tf.unstack(init_state, axis=0)
 rnn_tuple_state = tuple(
@@ -77,7 +79,7 @@ output_bias = tf.Variable(np.zeros(shape=(1, output_classes)), dtype=tf.float32)
 # time_major=False just dictates the order of the shape of inputs
 # states_series is a tensor of shape [batch_size, bpl, state_size]
 # current state isn't really used here
-cell = tf.nn.rnn_cell.BasicLSTMCell(state_size, state_is_tuple=True)
+cell = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
 cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=batchX_placeholder, initial_state=rnn_tuple_state, time_major=False)
 
@@ -172,6 +174,7 @@ with tf.Session() as sess:
     # (likely to be different data in this case since rand, but generally doesn't have to be if you have limited data)
     for epoch in range(num_epochs):
         x, y = generateData()
+        # tuple size is 2
         _current_state = np.zeros((num_layers, 2, batch_size, state_size))
 
         print("New data, epoch:", epoch)
