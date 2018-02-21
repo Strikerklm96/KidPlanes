@@ -28,18 +28,24 @@ num_epochs = 300  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
 bpl = 10  # "back prop length" how many values should be in a single training stream?
 state_size = 50  # how many values should be passed to the next hidden layer
-output_classes = 5  # defines OUTPUT vector length
+output_classes = 28  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
 batches_per_epoch = epoch_input_length // batch_size // bpl  # results in 333
 learning_rate = 0.1  # rate passed to optimizer (this value is important)
-input_classes = output_classes
 num_layers = 2
+input_classes = state_size # please read the link and the description
+# although input_classes needs to equal state_size, output_classes doesn't, so we build the inputs as
+# a set of
+
+
+# https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
+
 
 def generateRandomClassVector():
     vector = np.zeros(input_classes)
-    vector[np.random.randint(0, input_classes)] = 1
+    vector[np.random.randint(0, output_classes)] = 1
     return vector
 
 
@@ -49,7 +55,12 @@ def generateData():
         v = generateRandomClassVector()
         inputs[i] = v
 
-    outputs = np.roll(inputs, echo_step)  # just shifts the whole bit list over by echo_step
+
+    outputs = []
+    for i in range(len(inputs)):
+        outputs.append(np.resize(inputs[i], output_classes))
+
+    outputs = np.roll(a=outputs, shift=echo_step, axis=0)  # just shifts the whole bit list over by echo_step
 
     # reshape this into a 2d vector where each entry has batch_size elements and an unknown (-1) number of entries in it
     inputs = inputs.reshape((batch_size, -1, input_classes))
@@ -64,9 +75,9 @@ batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, bpl, outp
 
 # tuple size is 2
 init_state = tf.placeholder(tf.float32, [num_layers, 2, batch_size, state_size])
-layer = tf.unstack(init_state, axis=0)
+layers = tf.unstack(init_state, axis=0)
 rnn_tuple_state = tuple(
-         [tf.nn.rnn_cell.LSTMStateTuple(layer[idx][0], layer[idx][1])
+         [tf.nn.rnn_cell.LSTMStateTuple(layers[idx][0], layers[idx][1])
           for idx in range(num_layers)]
 )
 
