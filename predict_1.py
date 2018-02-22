@@ -55,12 +55,13 @@ def generateData():
     return inputs, outputs  # have shapes[batch_size, (remainder)] in this case, [5, 10000]
 
 
-# input, output, and state types
-batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, None, input_classes])
-batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, None, output_classes])
+# input, output, and state types [batch_size, bpl, input_classes]
+# keeping the values as None lets it be dynamic so we can do 1 char at a time later!
+batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[None, None, input_classes])
+batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[None, None, output_classes])
 
 # tuple size is 2
-init_state = tf.placeholder(tf.float32, [num_layers, 2, batch_size, state_size])
+init_state = tf.placeholder(tf.float32, [num_layers, 2, None, state_size])
 layers = tf.unstack(init_state, axis=0)
 rnn_tuple_state = tuple(
          [tf.nn.rnn_cell.LSTMStateTuple(layers[idx][0], layers[idx][1])
