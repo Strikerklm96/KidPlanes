@@ -23,12 +23,12 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-echo_step = 2  # by how many bits is the input shifted to produce the output
-num_epochs = 300  # how many epochs of training should we do?
+echo_step = -1  # by how many bits is the input shifted to produce the output
+num_epochs = 5  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
-bpl = 10  # "back prop length" how many values should be in a single training stream?
+bpl = 30  # "back prop length" how many values should be in a single training stream?
 state_size = 50  # how many values should be passed to the next hidden layer
-output_classes = 28  # defines OUTPUT vector length
+output_classes = 8  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
 # how many batches will be done to go over all the data, note that since we are using integer division: //
 # not all the data will get used
@@ -47,11 +47,16 @@ def generateRandomClassVector():
     vector[np.random.randint(0, output_classes)] = 1
     return vector
 
+def generateClassVector(i):
+    vector = np.zeros(input_classes)
+    vector[i] = 1
+    return vector
+
 
 def generateData():
     inputs = np.empty((epoch_input_length, input_classes))
     for i in range(epoch_input_length):
-        v = generateRandomClassVector()
+        v = generateClassVector(i % output_classes)
         inputs[i] = v
 
 
@@ -201,6 +206,8 @@ with tf.Session() as sess:
             batchY = y[:,
                      start_batch_pos:end_batch_pos]  # size [5, 30] because [batch_size, bpl]
 
+
+
             # _total_loss is just the average loss across this batch, so a float
             # _train_step is None
             # _current_state is shape [5, 4] because [batch_size, state_size] it will be fed to next batch
@@ -251,10 +258,15 @@ with tf.Session() as sess:
                     # into probabilities.
                     # out[0] is the probability of 0 being the right answer
                     # out[1] is the probability of 1 being the right answer
+                    rounded_input = decode(batchX[batch_series_i, :])
                     rounded_answer = decode(batchY[batch_series_i, :])
                     rounded_prediction = decode(mini_batch_prediction)
 
-                    print("Answer:")
+                    print("Input:")
+                    print("[", end="")
+                    print(*rounded_input, sep=" ", end="")
+                    print("]")
+                    print("Output:")
                     print("[", end="")
                     print(*rounded_answer, sep=" ", end="")
                     print("]")
@@ -263,7 +275,52 @@ with tf.Session() as sess:
                     print(*rounded_prediction, sep=" ", end="")
                     print("]")
                     print("Resulting State:")
+
+
+
                    # print(_current_cell_state[batch_series_i])  # the resulting state after the run
+
+            _current_state = np.zeros((num_layers, 2, batch_size, state_size))
+
+
+
+
+print("New data, epoch:", epoch)
+sub_loss_list = []  # store the loss value because displaying every single one is silly
+for batch_i in range(4):
+    # find where in the data to start for this batch
+    start_batch_pos = batch_i * bpl
+    end_batch_pos = start_batch_pos + bpl
+
+    # for all lists in this list, grab this range [start_batch_pos:end_batch_pos)
+    batchX = x[:, start_batch_pos:end_batch_pos]
+    batchY = y[:, start_batch_pos:end_batch_pos]
+    _total_loss, _current_state, _predictions_series = sess.run(
+        [total_loss, current_state, predictions_series],
+        feed_dict={
+            batchX_placeholder: batchX,  # input for this batch
+            batchY_placeholder: batchY,  # output (answers) for this batch
+            init_state: _current_state
+        })
+
+    mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
+    rounded_answer = decode(batchY[batch_series_i, :])
+    rounded_prediction = decode(mini_batch_prediction)
+
+    print("Input:")
+    print("[", end="")
+    print(*rounded_input, sep=" ", end="")
+    print("]")
+    print("Output:")
+    print("[", end="")
+    print(*rounded_answer, sep=" ", end="")
+    print("]")
+    print("Prediction:")
+    print("[", end="")
+    print(*rounded_prediction, sep=" ", end="")
+    print("]")
+    print("Resulting State:")
+
 
 plt.ioff()
 plt.show()
