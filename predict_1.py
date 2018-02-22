@@ -56,8 +56,8 @@ def generateData():
 
 
 # input, output, and state types
-batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, bpl, input_classes])
-batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, bpl, output_classes])
+batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[batch_size, None, input_classes])
+batchY_placeholder = tf.placeholder(dtype=tf.int32, shape=[batch_size, None, output_classes])
 
 # tuple size is 2
 init_state = tf.placeholder(tf.float32, [num_layers, 2, batch_size, state_size])
@@ -77,18 +77,18 @@ cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
 states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=batchX_placeholder, initial_state=rnn_tuple_state, time_major=False)
 
 states_series = tf.reshape(states_series, [-1, state_size])
-logits = tf.matmul(states_series, output_weight) + output_bias
+logits = tf.matmul(states_series, output_weight) + output_bias  # logits = 150, 50
 labels = batchY_placeholder
 
 
-x = tf.reshape(tensor=logits, shape=[batch_size, bpl, output_classes])
-logits_series = tf.unstack(value=x, axis=1)
-predictions_series = [tf.nn.softmax(logit) for logit in logits_series]
+predictions_series = tf.nn.softmax(logits) # we don't need to do fancy prediction recording, just remember the values
 
 
 losses = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
 total_loss = tf.reduce_mean(input_tensor=losses)
 train_step = tf.train.AdagradOptimizer(learning_rate=learning_rate).minimize(total_loss)
+
+
 
 
 def decode(coded):
@@ -185,17 +185,17 @@ with tf.Session() as sess:
             if batch_i % 100 == 0:
                 print("Step:", batch_i, "Loss:", _total_loss)
                 # update the plots
-                plot(loss_list, _predictions_series, batchX, batchY)
+                #plot(loss_list, _predictions_series, batchX, batchY)
 
                 if batch_i % 400 == 0:
                     mini_batch_prediction = []
                     rounded_prediction = []
                     batch_series_i = 2
 
-                    mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
+                    _predictions_series = np.reshape(a=_predictions_series, newshape=[batch_size, bpl, output_classes])
                     rounded_input = decode(batchX[batch_series_i, :])
                     rounded_answer = decode(batchY[batch_series_i, :])
-                    rounded_prediction = decode(mini_batch_prediction)
+                    rounded_prediction = decode(_predictions_series[batch_series_i, :])
 
                     print("Input:")
                     print("[", end="")
