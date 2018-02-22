@@ -1,33 +1,35 @@
-
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-echo_step = -1  # by how many bits is the input shifted to produce the output
+
+
+echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
 num_epochs = 5  # how many epochs of training should we do?
-epoch_input_length = 50000  # what is total number of inputs we should generate to use on an epoch?
+epoch_input_length = 50000  # what is total number of input data timesteps we should generate to use per epoch?
 bpl = 30  # "back prop length" how many values should be in a single training stream?
 state_size = 50  # how many values should be passed to the next hidden layer
 output_classes = state_size  # defines OUTPUT vector length
-output_classes_real = 8
-batch_size = 5  # how many series to process simultaneously. look at "Schematic of the training data"
-# how many batches will be done to go over all the data, note that since we are using integer division: //
-# not all the data will get used
-batches_per_epoch = epoch_input_length // batch_size // bpl  # results in 333
-learning_rate = 0.1  # rate passed to optimizer (this value is important)
-num_layers = 2
-input_classes = state_size # please read the link and the description
-# although input_classes needs to equal state_size, output_classes doesn't, so we build the inputs as
-# a set of
-
+batch_size = 5  # how many series to process simultaneously. provides smoother training
+batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
+# because we are out of data
+learning_rate = 0.1  # how fast we try to learn (this value is important)
+num_layers = 2  # how many layers of the cell type do we stack?
+input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
+output_classes_real = 8  # lets us trim off the classes that aren't used from the data generation and display
 
+batchX = np.zeros((1, 1, input_classes))
+batchY = np.zeros((1, 1, input_classes))
+
+batchX[0,0,1] = 1  # start the sequence
 
 def generateRandomClassVector():
     vector = np.zeros(input_classes)
     vector[np.random.randint(0, output_classes)] = 1
     return vector
+
 
 def generateClassVector(i):
     vector = np.zeros(input_classes)
@@ -135,7 +137,6 @@ def plot(loss_list, predictions_series, batchX, batchY):
 
 np.set_printoptions(precision=1)
 with tf.Session() as sess:
-    sess = tf.Session()
     sess.run(tf.global_variables_initializer())
 
     plt.ion()
@@ -212,46 +213,41 @@ with tf.Session() as sess:
                     print("]")
                     print("Resulting State:")
 
-            _current_state = np.zeros((num_layers, 2, batch_size, state_size))
+    print("\n\nStarting New thing\n\n")
 
 
+    gen_batch_size = 1
+    gen_bpl = 1
+    gen_num_batches = 20
 
+    _current_state = np.zeros((num_layers, 2, gen_batch_size, state_size))
+    batchX = np.zeros((gen_batch_size, gen_bpl, input_classes))
+    batchY = np.zeros((gen_batch_size, gen_bpl, input_classes))
 
-print("New data, epoch:", epoch)
-sub_loss_list = []  # store the loss value because displaying every single one is silly
-for batch_i in range(4):
-    # find where in the data to start for this batch
-    start_batch_pos = batch_i * bpl
-    end_batch_pos = start_batch_pos + bpl
+    batchX[0,0,1] = 1  # start the sequence
 
-    # for all lists in this list, grab this range [start_batch_pos:end_batch_pos)
-    batchX = x[:, start_batch_pos:end_batch_pos]
-    batchY = y[:, start_batch_pos:end_batch_pos]
-    _total_loss, _current_state, _predictions_series = sess.run(
-        [total_loss, current_state, predictions_series],
-        feed_dict={
-            batchX_placeholder: batchX,  # input for this batch
-            batchY_placeholder: batchY,  # output (answers) for this batch
-            init_state: _current_state
-        })
+    for i in range(gen_num_batches):
 
-    mini_batch_prediction = np.array(_predictions_series)[:, batch_series_i, :]
-    rounded_answer = decode(batchY[batch_series_i, :])
-    rounded_prediction = decode(mini_batch_prediction)
+        _total_loss, _current_state, _predictions_series = sess.run(
+            [total_loss, current_state, predictions_series],
+            feed_dict={
+                batchX_placeholder: batchX,  # input for this batch
+                batchY_placeholder: batchY,  # output (answers) for this batch
+                init_state: _current_state
+            })
 
-    print("Input:")
-    print("[", end="")
-    print(*rounded_input, sep=" ", end="")
-    print("]")
-    print("Output:")
-    print("[", end="")
-    print(*rounded_answer, sep=" ", end="")
-    print("]")
-    print("Prediction:")
-    print("[", end="")
-    print(*rounded_prediction, sep=" ", end="")
-    print("]")
-    print("Resulting State:")
+        _predictions_series = np.reshape(a=_predictions_series, newshape=[gen_batch_size, gen_bpl, output_classes])
+        rounded_input = decode(batchX[0, :])
+        rounded_answer = decode(batchY[0, :])
+        rounded_prediction = decode(_predictions_series[0, :])
+
+        batchX[0, :] = _predictions_series[0, :]  # set the new input to be the last output
+
+        # The first few are bad since the state value is nonsense.
+        print("Prediction:")
+        print("[", end="")
+        print(*rounded_prediction, sep=" ", end="")
+        print("]")
 
 
 plt.ioff()
