@@ -3,10 +3,25 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+# randomly picks from a distribution of numbers based on their size
+def rand_pick(values, trim=0):
+
+    if trim != 0: # trim some values off
+        values = [0 if value < trim else value for value in values]
+
+    rand = np.random.random() * np.sum(values)
+
+    prob = 0
+    for i in range(len(values)):
+        prob += values[i]
+        if rand <= prob:
+            return i
+
+    return len(values)-1 # if the value happens to be just higher than last prob, handle that
 
 
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
-num_epochs = 5  # how many epochs of training should we do?
+num_epochs = 1  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of input data timesteps we should generate to use per epoch?
 bpl = 30  # "back prop length" how many values should be in a single training stream?
 state_size = 50  # how many values should be passed to the next hidden layer
@@ -19,6 +34,8 @@ num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
 output_classes_real = 8  # lets us trim off the classes that aren't used from the data generation and display
+temperature = 1  # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values scalar
+# but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 
 batchX = np.zeros((1, 1, input_classes))
 batchY = np.zeros((1, 1, input_classes))
@@ -83,6 +100,7 @@ states_series = tf.reshape(states_series, [-1, state_size])
 logits = tf.matmul(states_series, output_weight) + output_bias  # logits = 150, 50
 labels = batchY_placeholder
 
+logits = tf.scalar_mul(scalar=temperature, x=logits)
 
 predictions_series = tf.nn.softmax(logits) # we don't need to do fancy prediction recording, just remember the values
 
@@ -239,9 +257,12 @@ with tf.Session() as sess:
         _predictions_series = np.reshape(a=_predictions_series, newshape=[gen_batch_size, gen_bpl, output_classes])
         rounded_input = decode(batchX[0, :])
         rounded_answer = decode(batchY[0, :])
-        rounded_prediction = decode(_predictions_series[0, :])
+        selected_answer = _predictions_series[0, :]
+        selected_answer.fill(0)
+        selected_answer[rand_pick(values=_predictions_series[0, :], trim=0)] = 1
+        rounded_prediction = decode(selected_answer)
 
-        batchX[0, :] = _predictions_series[0, :]  # set the new input to be the last output
+        batchX[0, :] = selected_answer  # set the new input to be the last output
 
         # The first few are bad since the state value is nonsense.
         print("Prediction:")
