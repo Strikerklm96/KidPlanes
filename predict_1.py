@@ -21,7 +21,7 @@ def rand_pick(values, trim=0):
 
 
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
-num_epochs = 1  # how many epochs of training should we do?
+num_epochs = 2  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of input data timesteps we should generate to use per epoch?
 bpl = 30  # "back prop length" how many values should be in a single training stream?
 state_size = 50  # how many values should be passed to the next hidden layer
@@ -34,7 +34,7 @@ num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
 output_classes_real = 8  # lets us trim off the classes that aren't used from the data generation and display
-temperature = 1 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
+temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
 
@@ -102,7 +102,7 @@ logits = tf.matmul(states_series, output_weight) + output_bias  # logits = 150, 
 labels = batchY_placeholder
 
 
-predictions_series = tf.nn.softmax(tf.scalar_mul(scalar=1.0/temperature, x=logits))
+predictions_series = tf.nn.softmax(tf.scalar_mul(scalar=float(1)/float(temperature), x=logits))
 
 
 losses = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
