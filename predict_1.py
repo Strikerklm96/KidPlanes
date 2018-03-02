@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-# randomly picks from a distribution of numbers based on their size
+# returns index value
 def rand_pick(values, trim=0):
 
     if trim != 0: # trim some values off
@@ -34,8 +34,9 @@ num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
 output_classes_real = 8  # lets us trim off the classes that aren't used from the data generation and display
-temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values scalar
+temperature = 1 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
+# higher temperature makes the difference between values less, so it makes it more random and creative
 
 batchX = np.zeros((1, 1, input_classes))
 batchY = np.zeros((1, 1, input_classes))
@@ -100,9 +101,8 @@ states_series = tf.reshape(states_series, [-1, state_size])
 logits = tf.matmul(states_series, output_weight) + output_bias  # logits = 150, 50
 labels = batchY_placeholder
 
-# logits = tf.scalar_mul(scalar=temperature, x=logits)
 
-predictions_series = tf.nn.softmax(logits) # we don't need to do fancy prediction recording, just remember the values
+predictions_series = tf.nn.softmax(tf.scalar_mul(scalar=1.0/temperature, x=logits))
 
 
 losses = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
@@ -259,6 +259,12 @@ with tf.Session() as sess:
         rounded_answer = decode(batchY[0, :])
         rounded_prediction = decode(_predictions_series[0, :])
 
+
+        x = rand_pick(values=_predictions_series[0, :][0],trim=0)  # accessing 0 batch at end
+
+        _predictions_series[0, :][0] = np.zeros(input_classes)
+        _predictions_series[0, :][0][x] = 1
+
         batchX[0, :] = _predictions_series[0, :]  # set the new input to be the last output
 
         # The first few are bad since the state value is nonsense.
@@ -266,6 +272,8 @@ with tf.Session() as sess:
         print("[", end="")
         print(*rounded_prediction, sep=" ", end="")
         print("]")
+        print("Temp Selected:")
+        print(x)
 
 
 plt.ioff()
