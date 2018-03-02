@@ -21,10 +21,10 @@ def rand_pick(values, trim=0):
 
 
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
-num_epochs = 2  # how many epochs of training should we do?
+num_epochs = 50  # how many epochs of training should we do?
 epoch_input_length = 50000  # what is total number of input data timesteps we should generate to use per epoch?
-bpl = 30  # "back prop length" how many values should be in a single training stream?
-state_size = 50  # how many values should be passed to the next hidden layer
+bpl = 50  # "back prop length" how many values should be in a single training stream?
+state_size = 256  # how many values should be passed to the next hidden layer
 output_classes = state_size  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. provides smoother training
 batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
@@ -33,43 +33,106 @@ learning_rate = 0.1  # how fast we try to learn (this value is important)
 num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
-output_classes_real = 8  # lets us trim off the classes that aren't used from the data generation and display
 temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
 
 data = ""
 with open("data/shakespear.txt", "r") as myfile:
-    data = myfile.read().replace('\n', '')
+    data = myfile.read().replace('\n', '').lower()
 
-# batchX = np.zeros((1, 1, input_classes))
-# batchY = np.zeros((1, 1, input_classes))
-#
-# batchX[0,0,1] = 1  # start the sequence
+base = 26  # how many characters
+extras = 8  # how many extra characters
+def charToClass(char):
+    classification = np.zeros(input_classes)
 
-def generateRandomClassVector():
-    vector = np.zeros(input_classes)
-    vector[np.random.randint(0, output_classes)] = 1
-    return vector
+    if char == ".":
+        classification[base+0] = 1
+    elif char == " ":
+        classification[base+1] = 1
+    elif char == "'":
+        classification[base+2] = 1
+    elif char == "\"":
+        classification[base+3] = 1
+    elif char == ",":
+        classification[base+4] = 1
+    elif char == "?":
+        classification[base+5] = 1
+    elif char == "!":
+        classification[base+6] = 1
+    elif char == ":":
+        classification[base+7] = 1
+    elif ord('a') <= ord(char) <= ord('z'):
+        index = ord(char) - ord('a')
+        classification[index] = 1
+    else:
+        classification[base+4] = 1
+
+    return classification
 
 
-def generateClassVector(i):
-    vector = np.zeros(input_classes)
-    vector[i] = 1
-    return vector
+def classToChar(arry):
+    index = np.argmax(arry)
+    if index == base+0:
+        char = "."
+    elif index == base+1:
+        char = " "
+    elif index == base+2:
+        char = "'"
+    elif index == base+3:
+        char = "\""
+    elif index == base+4:
+        char = ","
+    elif index == base+5:
+        char = "?"
+    elif index == base+6:
+        char = "!"
+    elif index == base+7:
+        char = ":"
+    elif 0 <= index <= 25:
+        char = chr(index + ord('a'))
+    else:
+        char = '&'
+
+    return char
+
+
+def stringToClassList(string):
+    classList = []
+    for i in range(len(string)):
+        classList.append(charToClass(string[i]))
+
+    return classList
+
+
+def classListToString(classList):
+    string = ""
+    for i in range(len(classList)):
+        string += classToChar(classList[i])
+
+    return string
+
+s = classListToString([19.0, 4.0, 0.0, 11.0, 8.0, 13.0, 6.0, 27.0, 20.0, 13.0, 18.0, 4.0, 4.0, 13.0, 27.0, 19.0, 14.0, 27.0, 22.0, 4.0, 18.0, 19.0, 27.0, 22.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 3.0, 8.0, 18.0, 6.0, 17.0, 0.0, 2.0, 4.0, 33.0, 27.0, 4.0, 21.0, 4.0, 13.0, 27.0, 18.0, 14.0])
+a = classListToString([27.0, 27.0, 13.0, 11.0, 27.0, 13.0, 6.0, 27.0, 18.0, 13.0, 14.0, 4.0, 11.0, 3.0, 27.0, 19.0, 7.0, 27.0, 18.0, 8.0, 0.0, 19.0, 27.0, 18.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 19.0, 8.0, 18.0, 19.0, 11.0, 0.0, 2.0, 4.0, 31.0, 27.0, 0.0, 21.0, 4.0, 13.0, 27.0, 19.0, 14.0])
+print("This")
+print(s)
+print("next")
+print(a)
+
+dataClassList = stringToClassList(data)
+
+
+s = classListToString([19.0, 4.0, 0.0, 11.0, 8.0, 13.0, 6.0, 27.0, 20.0, 13.0, 18.0, 4.0, 4.0, 13.0, 27.0, 19.0, 14.0, 27.0, 22.0, 4.0, 18.0, 19.0, 27.0, 22.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 3.0, 8.0, 18.0, 6.0, 17.0, 0.0, 2.0, 4.0, 33.0, 27.0, 4.0, 21.0, 4.0, 13.0, 27.0, 18.0, 14.0])
+a = classListToString([27.0, 27.0, 13.0, 11.0, 27.0, 13.0, 6.0, 27.0, 18.0, 13.0, 14.0, 4.0, 11.0, 3.0, 27.0, 19.0, 7.0, 27.0, 18.0, 8.0, 0.0, 19.0, 27.0, 18.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 19.0, 8.0, 18.0, 19.0, 11.0, 0.0, 2.0, 4.0, 31.0, 27.0, 0.0, 21.0, 4.0, 13.0, 27.0, 19.0, 14.0])
+print("This")
+print(s)
+print("next")
+print(a)
 
 
 def generateData():
-    inputs = np.empty((epoch_input_length, input_classes))
-    for i in range(epoch_input_length):
-        v = generateClassVector(i % output_classes_real)
-        inputs[i] = v
-
-
-    outputs = []
-    for i in range(len(inputs)):
-        outputs.append(inputs[i])
-
+    inputs = np.asarray(dataClassList[:epoch_input_length])
+    outputs = inputs[:]  # copy it
     outputs = np.roll(a=outputs, shift=echo_step, axis=0)  # just shifts the whole bit list over by echo_step
 
     # reshape this into a 2d vector where each entry has batch_size elements and an unknown (-1) number of entries in it
