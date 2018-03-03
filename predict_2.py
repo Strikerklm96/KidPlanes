@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
+import os.path
 
 # returns index value
 def rand_pick(values, trim=0):
@@ -20,11 +20,14 @@ def rand_pick(values, trim=0):
     return len(values)-1 # if the value happens to be just higher than last prob, handle that
 
 
+
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
 num_epochs = 50  # how many epochs of training should we do?
+total_text = 4900000
 epoch_input_length = 50000  # what is total number of input data timesteps we should generate to use per epoch?
+max_start = total_text - epoch_input_length
 bpl = 50  # "back prop length" how many values should be in a single training stream?
-state_size = 256  # how many values should be passed to the next hidden layer
+state_size = 512  # how many values should be passed to the next hidden layer
 output_classes = state_size  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. provides smoother training
 batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
@@ -36,6 +39,20 @@ input_classes = state_size  # read this link
 temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
+
+
+name_list = []
+name_list.extend(["layers", str(num_layers)])
+name_list.extend(["state", str(state_size)])
+
+file_name = os.path.basename(__file__)[:-3]
+save_path = "./brain/" + file_name + "/"
+
+brain_path = save_path + "model"
+for i in range(len(name_list)):
+    brain_path += "_" + name_list[i]
+brain_path += ".ckpt"
+
 
 data = ""
 with open("data/shakespear.txt", "r") as myfile:
@@ -69,7 +86,6 @@ def charToClass(char):
         classification[base+4] = 1
 
     return classification
-
 
 def classToChar(arry):
     index = np.argmax(arry)
@@ -112,26 +128,11 @@ def classListToString(classList):
 
     return string
 
-s = classListToString([19.0, 4.0, 0.0, 11.0, 8.0, 13.0, 6.0, 27.0, 20.0, 13.0, 18.0, 4.0, 4.0, 13.0, 27.0, 19.0, 14.0, 27.0, 22.0, 4.0, 18.0, 19.0, 27.0, 22.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 3.0, 8.0, 18.0, 6.0, 17.0, 0.0, 2.0, 4.0, 33.0, 27.0, 4.0, 21.0, 4.0, 13.0, 27.0, 18.0, 14.0])
-a = classListToString([27.0, 27.0, 13.0, 11.0, 27.0, 13.0, 6.0, 27.0, 18.0, 13.0, 14.0, 4.0, 11.0, 3.0, 27.0, 19.0, 7.0, 27.0, 18.0, 8.0, 0.0, 19.0, 27.0, 18.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 19.0, 8.0, 18.0, 19.0, 11.0, 0.0, 2.0, 4.0, 31.0, 27.0, 0.0, 21.0, 4.0, 13.0, 27.0, 19.0, 14.0])
-print("This")
-print(s)
-print("next")
-print(a)
-
 dataClassList = stringToClassList(data)
 
-
-s = classListToString([19.0, 4.0, 0.0, 11.0, 8.0, 13.0, 6.0, 27.0, 20.0, 13.0, 18.0, 4.0, 4.0, 13.0, 27.0, 19.0, 14.0, 27.0, 22.0, 4.0, 18.0, 19.0, 27.0, 22.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 3.0, 8.0, 18.0, 6.0, 17.0, 0.0, 2.0, 4.0, 33.0, 27.0, 4.0, 21.0, 4.0, 13.0, 27.0, 18.0, 14.0])
-a = classListToString([27.0, 27.0, 13.0, 11.0, 27.0, 13.0, 6.0, 27.0, 18.0, 13.0, 14.0, 4.0, 11.0, 3.0, 27.0, 19.0, 7.0, 27.0, 18.0, 8.0, 0.0, 19.0, 27.0, 18.0, 8.0, 19.0, 7.0, 27.0, 19.0, 7.0, 8.0, 18.0, 27.0, 19.0, 8.0, 18.0, 19.0, 11.0, 0.0, 2.0, 4.0, 31.0, 27.0, 0.0, 21.0, 4.0, 13.0, 27.0, 19.0, 14.0])
-print("This")
-print(s)
-print("next")
-print(a)
-
-
 def generateData():
-    inputs = np.asarray(dataClassList[:epoch_input_length])
+    start = np.random.randint(0, max_start)
+    inputs = np.asarray(dataClassList[start:start+epoch_input_length])
     outputs = inputs[:]  # copy it
     outputs = np.roll(a=outputs, shift=echo_step, axis=0)  # just shifts the whole bit list over by echo_step
 
@@ -177,6 +178,50 @@ total_loss = tf.reduce_mean(input_tensor=losses)
 train_step = tf.train.AdagradOptimizer(learning_rate=learning_rate).minimize(total_loss)
 
 
+def TestSave(epoch, save_path):
+    print("Epoch Done. Save model and write to " + save_path + str(epoch))
+
+    saver.save(sess, brain_path)
+
+    gen_batch_size = 1
+    gen_bpl = 1
+    gen_num_batches = 2000
+
+    _current_state = np.zeros((num_layers, 2, gen_batch_size, state_size))
+    batchX = np.zeros((gen_batch_size, gen_bpl, input_classes))
+    batchY = np.zeros((gen_batch_size, gen_bpl, input_classes))
+
+    batchX[0,0,1] = 1  # start the sequence
+
+    print("Prediction:")
+    chars = ""
+
+    for i in range(gen_num_batches):
+
+        _total_loss, _current_state, _predictions_series = sess.run(
+            [total_loss, current_state, predictions_series],
+            feed_dict={
+                batchX_placeholder: batchX,  # input for this batch
+                batchY_placeholder: batchY,  # output (answers) for this batch
+                init_state: _current_state
+            })
+
+        _predictions_series = np.reshape(a=_predictions_series, newshape=[gen_batch_size, gen_bpl, output_classes])
+
+        x = rand_pick(values=_predictions_series[0, :][0],trim=0)  # accessing 0 batch at end
+
+        _predictions_series[0, :][0] = np.zeros(input_classes)
+        _predictions_series[0, :][0][x] = 1
+
+        chars += classListToString(_predictions_series[0, :])
+
+        batchX[0, :] = _predictions_series[0, :]  # set the new input to be the last output
+
+    text_file_name = "output" + str(epoch) + ".txt"
+    text_file = open(save_path + text_file_name, "w")
+    text_file.write(chars)
+    text_file.close()
+    print(chars[:150])
 
 
 def decode(coded):
@@ -186,48 +231,17 @@ def decode(coded):
 
     return vals
 
-
-def plot(loss_list, predictions_series, batchX, batchY):
-    ax = plt.subplot(2, 3, 1)
-    plt.cla()
-    plt.plot(loss_list)
-    ax.set_ylim(ymin=0)  # always show y0 and
-
-    for batch_series_idx in range(5):
-        coded = np.array(predictions_series)[:, batch_series_idx, :]
-        single_output_series = decode(coded)
-
-        plt.subplot(2, 3, batch_series_idx + 2)  # select the next plot to draw on
-        plt.cla()
-        plt.axis([0, bpl, 0, 2])
-        left_offset = range(bpl)
-
-        barHeight = 0.1
-        nextBars = barHeight * output_classes
-
-        print()
-
-        plt.bar(x=left_offset, height=decode(batchX[batch_series_idx, :]) * barHeight, bottom=nextBars * 2, width=1,
-                color="red")  # input
-
-        plt.bar(x=left_offset, height=decode(batchY[batch_series_idx, :]) * barHeight, bottom=nextBars * 1, width=1,
-                color="green")  # output
-
-        plt.bar(x=left_offset, height=single_output_series * barHeight, bottom=nextBars * 0, width=1,
-                color="blue")  # network guess
-
-    plt.draw()
-    plt.pause(0.0001)
-
+saver = tf.train.Saver()
 
 np.set_printoptions(precision=1)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
-    plt.ion()
-    plt.figure()
-    plt.show()
-    loss_list = []
+    if os.path.isfile(brain_path + ".index"):
+        print("Restoring Model")
+        saver.restore(sess, brain_path)
+    else:
+        print("No Model Found")
 
     for epoch in range(num_epochs):
         x, y = generateData()
@@ -258,90 +272,36 @@ with tf.Session() as sess:
                     init_state: _current_state
                 })
 
-
-            # keep track of the loss values so we can plot them
-            sub_loss_list.append(_total_loss)
-            num_loss_avg = 20  # average accross this many to prevent spikes
-            if (len(sub_loss_list) >= num_loss_avg):
-                averageValue = [np.average(sub_loss_list)]
-                averageValue = averageValue * num_loss_avg  # repeat this value num_loss_avg times
-                sub_loss_list = []
-                loss_list.extend(averageValue)
-
-
-            if batch_i % 100 == 0:
+            if batch_i % 10 == 0:
                 print("Step:", batch_i, "Loss:", _total_loss)
-                # update the plots
-                #plot(loss_list, _predictions_series, batchX, batchY)
 
-                if batch_i % 400 == 0:
-                    mini_batch_prediction = []
-                    rounded_prediction = []
-                    batch_series_i = 2
+            if batch_i % 400 == 0:
+                mini_batch_prediction = []
+                rounded_prediction = []
+                batch_series_i = 2
 
-                    _predictions_series = np.reshape(a=_predictions_series, newshape=[batch_size, bpl, output_classes])
-                    rounded_input = decode(batchX[batch_series_i, :])
-                    rounded_answer = decode(batchY[batch_series_i, :])
-                    rounded_prediction = decode(_predictions_series[batch_series_i, :])
+                _predictions_series = np.reshape(a=_predictions_series, newshape=[batch_size, bpl, output_classes])
+                rounded_input = decode(batchX[batch_series_i, :])
+                rounded_answer = decode(batchY[batch_series_i, :])
+                rounded_prediction = decode(_predictions_series[batch_series_i, :])
 
-                    print("Input:")
-                    print("[", end="")
-                    print(*rounded_input, sep=" ", end="")
-                    print("]")
-                    print("Output:")
-                    print("[", end="")
-                    print(*rounded_answer, sep=" ", end="")
-                    print("]")
-                    print("Prediction:")
-                    print("[", end="")
-                    print(*rounded_prediction, sep=" ", end="")
-                    print("]")
-                    print("Resulting State:")
+                print("Input:")
+                print("[", end="")
+                print(*rounded_input, sep=" ", end="")
+                print("]")
+                print("Output:")
+                print("[", end="")
+                print(*rounded_answer, sep=" ", end="")
+                print("]")
+                print("Prediction:")
+                print("[", end="")
+                print(*rounded_prediction, sep=" ", end="")
+                print("]")
+                print("Resulting State:")
 
-    print("\n\nStarting New thing\n\n")
+        TestSave(epoch, save_path)
 
 
-    gen_batch_size = 1
-    gen_bpl = 1
-    gen_num_batches = 20
-
-    _current_state = np.zeros((num_layers, 2, gen_batch_size, state_size))
-    batchX = np.zeros((gen_batch_size, gen_bpl, input_classes))
-    batchY = np.zeros((gen_batch_size, gen_bpl, input_classes))
-
-    batchX[0,0,1] = 1  # start the sequence
-
-    for i in range(gen_num_batches):
-
-        _total_loss, _current_state, _predictions_series = sess.run(
-            [total_loss, current_state, predictions_series],
-            feed_dict={
-                batchX_placeholder: batchX,  # input for this batch
-                batchY_placeholder: batchY,  # output (answers) for this batch
-                init_state: _current_state
-            })
-
-        _predictions_series = np.reshape(a=_predictions_series, newshape=[gen_batch_size, gen_bpl, output_classes])
-        rounded_input = decode(batchX[0, :])
-        rounded_answer = decode(batchY[0, :])
-        rounded_prediction = decode(_predictions_series[0, :])
 
 
-        x = rand_pick(values=_predictions_series[0, :][0],trim=0)  # accessing 0 batch at end
 
-        _predictions_series[0, :][0] = np.zeros(input_classes)
-        _predictions_series[0, :][0][x] = 1
-
-        batchX[0, :] = _predictions_series[0, :]  # set the new input to be the last output
-
-        # The first few are bad since the state value is nonsense.
-        print("Prediction:")
-        print("[", end="")
-        print(*rounded_prediction, sep=" ", end="")
-        print("]")
-        print("Temp Selected:")
-        print(x)
-
-
-plt.ioff()
-plt.show()
