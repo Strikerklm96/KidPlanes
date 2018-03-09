@@ -32,11 +32,11 @@ output_classes = state_size  # defines OUTPUT vector length
 batch_size = 5  # how many series to process simultaneously. provides smoother training
 batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
 # because we are out of data
-learning_rate = 0.1  # how fast we try to learn (this value is important)
+learning_rate = 0.005  # how fast we try to learn (this value is important)
 num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = state_size  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
-temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
+temperature = 0.2 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
 

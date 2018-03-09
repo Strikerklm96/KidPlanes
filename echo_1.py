@@ -156,7 +156,7 @@ def plot(loss_list, predictions_series, batchX, batchY):
 
 
 np.set_printoptions(precision=1)
-with tf.Session() as sess:
+with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
 
