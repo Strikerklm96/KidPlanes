@@ -26,19 +26,19 @@ extras = 8  # how many extra characters
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
 num_epochs = 2000  # how many epochs of training should we do?
 total_text = 4900000
-epoch_input_length = 250000  # what is total number of input data timesteps we should generate to use per epoch?
+epoch_input_length = 250  # what is total number of input data timesteps we should generate to use per epoch?
 max_start = total_text - epoch_input_length
 bpl = 50  # "back prop length" how many values should be in a single training stream?
 state_size = 512  # how many values should be passed to the next hidden layer
 output_classes = base+extras  # defines OUTPUT vector length
-batch_size = 50  # how many series to process simultaneously. provides smoother training
+batch_size = 1  # how many series to process simultaneously. provides smoother training
 batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
 # because we are out of data
 learning_rate = 0.2  # how fast we try to learn (this value is important)
 num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = output_classes  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
-temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
+temperature = 3 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
 
@@ -199,6 +199,7 @@ def TestSave(epoch, save_path):
 
     #print("Prediction:")
     chars = ""
+
 
     for i in range(gen_num_batches):
 
