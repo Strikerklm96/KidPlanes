@@ -21,6 +21,8 @@ def rand_pick(values, trim=0):
 
 
 
+base = 26  # how many characters
+extras = 8  # how many extra characters
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
 num_epochs = 2000  # how many epochs of training should we do?
 total_text = 4900000
@@ -28,13 +30,13 @@ epoch_input_length = 250000  # what is total number of input data timesteps we s
 max_start = total_text - epoch_input_length
 bpl = 50  # "back prop length" how many values should be in a single training stream?
 state_size = 512  # how many values should be passed to the next hidden layer
-output_classes = state_size  # defines OUTPUT vector length
+output_classes = base+extras  # defines OUTPUT vector length
 batch_size = 50  # how many series to process simultaneously. provides smoother training
 batches_per_epoch = epoch_input_length // batch_size // bpl  # how many batches to do before starting a new epoch
 # because we are out of data
 learning_rate = 0.2  # how fast we try to learn (this value is important)
 num_layers = 2  # how many layers of the cell type do we stack?
-input_classes = state_size  # read this link
+input_classes = output_classes  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
 temperature = 0.2 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
@@ -57,8 +59,6 @@ data = ""
 with open("data/shakespear.txt", "r") as myfile:
     data = myfile.read().replace('\n', '').lower()
 
-base = 26  # how many characters
-extras = 8  # how many extra characters
 def charToClass(char):
     classification = np.zeros(input_classes)
 
