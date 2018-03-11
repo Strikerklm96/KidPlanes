@@ -38,7 +38,7 @@ learning_rate = 0.2  # how fast we try to learn (this value is important)
 num_layers = 2  # how many layers of the cell type do we stack?
 input_classes = output_classes  # read this link
 # https://stackoverflow.com/questions/47371608/cannot-stack-lstm-with-multirnncell-and-dynamic-rnn/47376568#47376568
-temperature = 0.2 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
+temperature = 1.0 # outputs are divided by temperature, so 0.5 turns 2,1 into 4,2. Increasing output values linearly
 # but softmax cares about the linear difference between values, so 0.5 increases confidence since (4-2) > (2-1)
 # higher temperature makes the difference between values less, so it makes it more random and creative
 
@@ -197,7 +197,7 @@ def TestSave(epoch, save_path):
 
     batchX[0,0,1] = 1  # start the sequence
 
-    print("Prediction:")
+    #print("Prediction:")
     chars = ""
 
     for i in range(gen_num_batches):
@@ -225,7 +225,7 @@ def TestSave(epoch, save_path):
     text_file = open(save_path + text_file_name, "w")
     text_file.write(chars)
     text_file.close()
-    print(chars[:150])
+    #print(chars[:150])
 
 
 def decode(coded):
@@ -252,7 +252,7 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         # tuple size is 2
         _current_state = np.zeros((num_layers, 2, batch_size, state_size))
 
-        print("New data, epoch:", epoch)
+        #print("New data, epoch:", epoch)
 
         sub_loss_list = []  # store the loss value because displaying every single one is silly
         for batch_i in range(batches_per_epoch):
@@ -276,32 +276,32 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
                     init_state: _current_state
                 })
 
-            if batch_i % 10 == 0:
-                print("Step:", batch_i, "Loss:", _total_loss)
+            #if batch_i % 10 == 0:
+                #print("Step:", batch_i, "Loss:", _total_loss)
 
-            if batch_i % 400 == 0:
-                mini_batch_prediction = []
-                rounded_prediction = []
-                batch_series_i = 2
+            # if batch_i % 400 == 0:
+            #     mini_batch_prediction = []
+            #     rounded_prediction = []
+            #     batch_series_i = 2
+            #
+            #     _predictions_series = np.reshape(a=_predictions_series, newshape=[batch_size, bpl, output_classes])
+            #     rounded_input = decode(batchX[batch_series_i, :])
+            #     rounded_answer = decode(batchY[batch_series_i, :])
+            #     rounded_prediction = decode(_predictions_series[batch_series_i, :])
 
-                _predictions_series = np.reshape(a=_predictions_series, newshape=[batch_size, bpl, output_classes])
-                rounded_input = decode(batchX[batch_series_i, :])
-                rounded_answer = decode(batchY[batch_series_i, :])
-                rounded_prediction = decode(_predictions_series[batch_series_i, :])
-
-                print("Input:")
-                print("[", end="")
-                print(*rounded_input, sep=" ", end="")
-                print("]")
-                print("Output:")
-                print("[", end="")
-                print(*rounded_answer, sep=" ", end="")
-                print("]")
-                print("Prediction:")
-                print("[", end="")
-                print(*rounded_prediction, sep=" ", end="")
-                print("]")
-                print("Resulting State:")
+                # print("Input:")
+                # print("[", end="")
+                # print(*rounded_input, sep=" ", end="")
+                # print("]")
+                # print("Output:")
+                # print("[", end="")
+                # print(*rounded_answer, sep=" ", end="")
+                # print("]")
+                # print("Prediction:")
+                # print("[", end="")
+                # print(*rounded_prediction, sep=" ", end="")
+                # print("]")
+                # print("Resulting State:")
 
         TestSave(epoch, save_path)
 
