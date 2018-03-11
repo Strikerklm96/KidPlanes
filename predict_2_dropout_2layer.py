@@ -160,9 +160,13 @@ output_weight = tf.Variable(np.random.rand(state_size, output_classes), dtype=tf
 output_bias = tf.Variable(np.zeros(shape=(1, output_classes)), dtype=tf.float32)
 
 
-cell = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
-cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=0.5)
-cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+cell = []
+for i in range(num_layers):
+    cell_i = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
+    cell_i = tf.nn.rnn_cell.DropoutWrapper(cell_i, output_keep_prob=0.5)
+    cell.append(cell_i)
+
+cell = tf.nn.rnn_cell.MultiRNNCell(cell, state_is_tuple=True)
 states_series, current_state = tf.nn.dynamic_rnn(cell=cell, inputs=batchX_placeholder, initial_state=rnn_tuple_state, time_major=False)
 
 states_series = tf.reshape(states_series, [-1, state_size])
