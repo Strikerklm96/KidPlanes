@@ -20,7 +20,6 @@ def rand_pick(values, trim=0):
     return len(values)-1 # if the value happens to be just higher than last prob, handle that
 
 
-
 base = 26  # how many characters
 extras = 8  # how many extra characters
 echo_step = -1  # by how many time steps is the input shifted to produce the output (we want to predict so we )
@@ -143,6 +142,10 @@ def generateData():
     return inputs, outputs  # have shapes[batch_size, (remainder)] in this case, [5, 10000]
 
 
+layer_name_list = []
+for i in range(num_layers):
+    layer_name_list.append("layer_" + str(i))
+
 # input, output, and state types [batch_size, bpl, input_classes]
 # keeping the values as None lets it be dynamic so we can do 1 char at a time later!
 batchX_placeholder = tf.placeholder(dtype=tf.float32, shape=[None, None, input_classes])
@@ -163,7 +166,7 @@ output_bias = tf.Variable(np.zeros(shape=(1, output_classes)), dtype=tf.float32)
 
 cell = []
 for i in range(num_layers):
-    cell_i = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True)
+    cell_i = tf.nn.rnn_cell.LSTMCell(state_size, state_is_tuple=True, name=layer_name_list[i])
     cell_i = tf.nn.rnn_cell.DropoutWrapper(cell_i, output_keep_prob=0.5)
     cell.append(cell_i)
 
