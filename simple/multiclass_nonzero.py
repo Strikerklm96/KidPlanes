@@ -44,7 +44,7 @@ def print_accuracy(session, network, input_data, output_data, input_type, output
 	# Test model
 	compute_error = tf.losses.mean_squared_error(predictions=network, labels=output_type)
 	error = session.run(fetches=[compute_error], feed_dict={input_type: input_data, output_type: output_data})
-	print("Error {}: {:.2f}".format(before_or_after, error)) * 100))
+	print("Error {}: {:.2f}".format(before_or_after, error))
 
 
 def run():
@@ -72,8 +72,7 @@ def run():
 		for _ in range(total_training_sessions):  # _ just means ignore this value
 			# fetches determines what to "compute"
 			# passing trainer implies you want to compute, and therefor influence, the values of the network
-			cost, _ = session.run(fetches=[cost_computation, trainer],
-			                      feed_dict={input_type: input_data_full, output_type: output_data_full})
+			cost, _ = session.run(fetches=[cost_computation, trainer], feed_dict={input_type: input_data_full, output_type: output_data_full})
 
 		print_accuracy(session, network, input_data_full, output_data_full, input_type, output_type, "after")
 		print_manual_evaluation(session, network, input_type)
